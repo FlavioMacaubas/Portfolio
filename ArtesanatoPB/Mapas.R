@@ -30,12 +30,16 @@ setwd("C:/Users/Macaubas/Desktop/Python/Labimec/Artesanato/Dados/Limpos")
 demanda_local = read_csv("DEMANDA_LOCAL_LIMPO.csv") %>% 
   rename(bairro = `2__BAIRRO_ONDE_MORA`) # Reonmeando nome dos bairros
 
-##### b) Oferta Local ----
+##### b) Demanda Turista ----
+demanda_turista = read_csv("DEMANDA_TURISTA_LIMPO.csv") %>% 
+  select(ESTADO_ORIGEM)
+
+##### c) Oferta Local ----
 oferta_local =  read_csv("oferta_artesanal_pb_2022_limpo.csv") %>% 
   select(ESTADO_ONDE_NASCEU, ESTADO_ONDE_MOROU)
 
 
-##### C) Dados geométricos ----
+##### d) Dados geométricos ----
 
 # Bairros de João Pessoa
 geometria_bairros = geobr::read_neighborhood(year = 2010) %>% 
@@ -44,9 +48,6 @@ geometria_bairros = geobr::read_neighborhood(year = 2010) %>%
   select(bairro, geom) # Colunas de interesse para análise
 
 # Estados
-uf_nasceu = oferta_local$ESTADO_ONDE_NASCEU %>% unique()
-uf_morou = oferta_local$ESTADO_ONDE_MOROU %>% unique()
-
 geometria_estados = geobr::read_state(year = 2010) %>% 
   select(abbrev_state, geom)
 
@@ -86,6 +87,14 @@ estado_morou = oferta_local %>%
   mutate(PERC = QNT*100/sum(QNT),
          PERC = round(PERC,2))
 
+estado_origem = demanda_turista %>% 
+  group_by(ESTADO_ORIGEM) %>% 
+  summarize(QNT = n()) %>%  
+  mutate(PERC = QNT*100/sum(QNT),
+         PERC = round(PERC,2))
+
+  
+
 #### Merging dos dados ----
 
 ##### a) FULL OUTER JOIN ----
@@ -103,13 +112,20 @@ dados_estados_morou = full_join(estado_morou, geometria_estados,
                                  by = c('ESTADO_ONDE_MOROU' = 'abbrev_state'))
 
 
+dados_estados_origem = full_join(estado_origem, geometria_estados,
+                                by = c('ESTADO_ORIGEM' = 'abbrev_state'))
+
+
 # Removendo do ambiente de trabalho bases não utilizadas
-rm(demanda_local, 
-   geometria_bairros, 
+rm(demanda_local,
+   demanda_turista,
+   oferta_local,
+   geometria_bairros,
+   geometria_estados,
    bairros,
    estado_morou,
    estado_nasceu,
-   oferta_local)
+   estado_origem)
 
 
 #### DataViz ----
@@ -197,6 +213,28 @@ mapa_estado_morou = ggplot() +
 # Salvando gráfico
 ggsave("C:/Users/Macaubas/Desktop/Python/Labimec/Artesanato/Imagens/Mapas/estados_morou.jpg",  # jpg, png, eps, tex, etc.
        plot = mapa_estado_morou, # Usar lastplot() quando não quiser referenciar o objeto ggplot direto
+       width = 12, height = 8, 
+       units = "in", #  Outras opções c("in", "cm", "mm")
+       dpi = 300)
+
+
+##### d) Mapa estado origem ----
+mapa_estado_origem = ggplot() +
+  geom_sf(data=dados_estados_origem, aes(geometry = geom, fill=PERC), color = 'black', size=0.15) +
+  scale_fill_viridis_c(option = "rocket", begin = 0.3, direction = -1) + 
+  labs(fill = "Percentual (%)",
+       title = "A maioria dos turistas entrevistado são da Paraíba, Bahia e São Paulo",
+       subtitle = "Há turistas de todas as regiões do Brasil",
+       caption = "Fonte: Elaboração própria com dados coletados e do IBGE") +
+  theme_minimal() +
+  no_axis +
+  tema + 
+  theme(legend.position='left',
+        legend.margin=margin(0, 0, 0, 0)); mapa_estado_origem
+
+# Salvando gráfico
+ggsave("C:/Users/Macaubas/Desktop/Python/Labimec/Artesanato/Imagens/Mapas/estados_origem.jpg",  # jpg, png, eps, tex, etc.
+       plot = mapa_estado_origem, # Usar lastplot() quando não quiser referenciar o objeto ggplot direto
        width = 12, height = 8, 
        units = "in", #  Outras opções c("in", "cm", "mm")
        dpi = 300)
