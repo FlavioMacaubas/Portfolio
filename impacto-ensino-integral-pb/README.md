@@ -18,25 +18,18 @@ o maior impacto no segundo ano de implantação da modalidade, com 15,5%. Não f
 encontrado significância estatística no terceiro ano da modalidade, possivelmente devido a
 pouca quantidade de observações.
 
+
+## Dados
+
+Microdados do ENEM de 2013 a 2019, disponibilizados pelo Inep.
+
+**Os dados excedem o limite de arquivos do github, se desejar solicitá-los, porfavor entrar em contato através do email flaviomacaubas@gmail.com**
+
 ## Métodologia
 
 A base de dados utilizado no trabalho são os microdados do Enem para os anos de 2013 a 2018 da Paraíba para verificação de trajetórias paralelas. Por sua vez o impacto é medido levando em consideração o ano de 2015 - pré-tratamento e 2016 a 2018 - pós-tratamento. Como há diferentes tempos de exposição, foram necessários ajustes na base de dados para captar a iteração entre tempo e tratamento, conforme descrito na tabela \autoref{tab:expo_tempo_integral}. Complementarmente, adiciona-se as gerências regionais de ensino como forma de controlar as diferenças na qualidade ensino entre as regiões do estado.
 
-\begin{table}[H]
-\caption{Comparação dos indicadores entre as Escolas Públicas Estaduais sob regime integral e regime não integral}\label{tab:estat_descrit}
-\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}l|cccc|cccc@{}}
-\toprule
- & \multicolumn{4}{c|}{\textbf{Sem Integral}} & \multicolumn{4}{c}{\textbf{Com Integral}} \\
-\textbf{Variável} & \multicolumn{1}{c}{\textbf{2015}} & \textbf{2016} & \textbf{2017} & \multicolumn{1}{c|}{\textbf{2018}} & \multicolumn{1}{c}{\textbf{2015}} & \textbf{2016} & \textbf{2017} & \multicolumn{1}{c}{\textbf{2018}} \\ \hline
-\midrule
-Média & 410 & 393 & 379 & 372 & 426 & 409 & 404 & 399 \\
-Desvio-Padrão & 55,7 & 58,8 & 67,0 & 74,9 & 36,5 & 44,6 & 50,6 & 60,5 \\
-LI (95\%) & 404 & 386 & 372 & 363 & 418 & 398 & 392 & 385 \\
-LS (95\%) & 417 & 399 & 387 & 380 & 433 & 418 & 417 & 411 \\ \hline
-\bottomrule
-\end{tabular*}
-\fonte{Elaboração própria a partir dos dados Inep}
-\end{table}
+![tabela_1](C:\Users\Macaubas\Documents\GitHub\Portfolio\impacto-ensino-integral-pb\imagens\tabela_1.png)
 
 A partir dos dados \autoref{tab:estat_descrit} percebe-se que há uma tendência de queda das médias observada nos dois grupos. Analogamente, é possível observar um aumento do desvio padrão no decorrer dos anos. Este é um indicativo de que os alunos do ensino público na Paraíba possam estar menos preparados para o ENEM, similarmente, é possível que as provas estejam ficando mais difícil, relativo a preparação do aluno. Destaca-se ainda que o número de escolas participantes no ENEM por ano é constante ao longo dos anos, uma vez que há um balanceamento imposto do painel. Constata-se que a hipótese de igualdade de médias é rejeitada a 95\%, consequentemente, os dois grupos possuem médias diferentes.
 
@@ -76,13 +69,7 @@ Uma maneira de contornar possíveis vieses nos contrafactuais é adotarmos a dif
 
 Na Figura \ref{fig:trajetorias_paralelas}, temos as trajetórias das médias no ENEM para o grupo de tratamento e controle. Como pode ser observado, as notas médias seguem uma tendência de crescimento, com alguns anos de pouca estabilidade. De forma geral, as series possuem um comportamento semelhante entre os grupos de interesse, possibilitando estimarmos o impacto do ensino integral através do diferença em diferenças.
 
-% Deve-se verificar a hipótese de trajetórias paralelas para decidir se iremos adotar PSM
-  \begin{figure}[H]
-        \centering
-        \caption{Trajetórias Paralelas}
-        \includegraphics[width=0.8\linewidth]{Figuras/trajetorias_paralelas.png}
-        \label{fig:trajetorias_paralelas}
-    \end{figure}
+![]
 
 O modelo proposto,  seguindo a estratégia de \citeonline{almeida2019impacto}, é 
 
