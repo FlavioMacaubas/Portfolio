@@ -1,8 +1,8 @@
 # Impacto do ensino integral no desempenho do ENEM dos alunos de escolas públicas da Paraíba
 
-´´´
+```
 Autores: Flávio Macaúbas e Wisley Costa
-´´´
+```
 
 ## Descrição
 
@@ -52,11 +52,14 @@ Uma maneira de contornar possíveis vieses nos contrafactuais é adotarmos a dif
 
 Na Figura 1, temos as trajetórias das médias no ENEM para o grupo de tratamento e controle. Como pode ser observado, as notas médias seguem uma tendência de crescimento, com alguns anos de pouca estabilidade. De forma geral, as series possuem um comportamento semelhante entre os grupos de interesse, possibilitando estimarmos o impacto do ensino integral através do diferença em diferenças.
 
+ 
+   ![traj_par](https://github.com/FlavioMacaubas/Portfolio/blob/master/impacto-ensino-integral-pb/imagens/trajetorias_paralelas.png)
+
 
 O modelo proposto,  seguindo a estratégia de \citeonline{almeida2019impacto}, é 
 
    
-   ![formula](https://render.githubusercontent.com/render/math?math=y_{it} = \sum_{j=1}^{J} \beta_j integral_{j, it} + \phi_i + \tau_t + \varepsilon_{it})
+   ![formula_1](https://github.com/FlavioMacaubas/Portfolio/blob/master/impacto-ensino-integral-pb/imagens/formula_1.png)
 
 
 em que $y_{it}$ é o indicador de resultado representado pela média das notas no emem dos estudantes vinculados a escola $i$ no tempo $t$, $integral_{j, it}$ é uma variável binária que assume valor um caso a escola $i$ seja de ensino integral no tempo $t$ por um número $j$ de anos, $\phi_{i}$ são variáveis constantes no tempo para cada $i$, $\tau_u$ é uma tendência temporal global e $\varepsilon_{it}$ é o termo de erro.  
