@@ -46,9 +46,7 @@ As escolas privadas foram removidas da base de dados utilizada, uma vez que essa
 
 Na \autoref{tab:expo_tempo_integral}, podemos observar a quantidade de escolas que ingressaram na modalidade integral para cada um dos anos, a partir de 2016. No primeiro ano de implantação, haviam 6 escolas tratadas. Já em 2017, mais 25 foram incorporadas; em 2018, 66. Até 2018, o estado da Paraíba possui um total de 97 escolas com ensino médio integral.
 
-% ENEM - PB - ESCOLA ESTADUAL - CONCLUINTES (GARANTE ENSINO MÉDIO)
-
-\section{Diferença em diferenças}
+### Diferenças em diferenças
 
 Uma maneira de contornar possíveis vieses nos contrafactuais é adotarmos a diferença em diferenças como método de capturarmos o impacto do ensino integral. Essa metodologia permite controlar não observáveis invariantes no tempo, sob hipótese de trajetórias paralelas entre os grupos de tratamento e controle.
 
@@ -57,8 +55,9 @@ Na Figura 1, temos as trajetórias das médias no ENEM para o grupo de tratament
 
 O modelo proposto,  seguindo a estratégia de \citeonline{almeida2019impacto}, é 
 
+   
+   ![formula](https://render.githubusercontent.com/render/math?math=y_{it} = \sum_{j=1}^{J} \beta_j integral_{j, it} + \phi_i + \tau_t + \varepsilon_{it})
 
-   $$ y_{it} = \sum_{j=1}^{J} \beta_j integral_{j, it} + \phi_i + \tau_t + \varepsilon_{it} $$
 
 em que $y_{it}$ é o indicador de resultado representado pela média das notas no emem dos estudantes vinculados a escola $i$ no tempo $t$, $integral_{j, it}$ é uma variável binária que assume valor um caso a escola $i$ seja de ensino integral no tempo $t$ por um número $j$ de anos, $\phi_{i}$ são variáveis constantes no tempo para cada $i$, $\tau_u$ é uma tendência temporal global e $\varepsilon_{it}$ é o termo de erro.  
 
