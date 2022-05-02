@@ -1,0 +1,389 @@
+---
+title: "SARIMA"
+author: "Flávio Macaúbas Torres Filho e José Carlos Claudino Filho"
+date: "27/04/2022"
+output: html_document
+---
+# Modelo SARIMA(p,d,q)(P, D, Q)S
+
+
+## Principais conclusões:
+
+* A série utilizada é o **Preço Mensal do Barril do Petróleo Bruto - Brent da Europa (U$)**
+
+  + Por tratar-se de dados mensais, **S = 12**
+
+* **Não foi necessário** realizar a diferença sazonal da série 
+
+* A série não é estacionária, tivemos que aplicar a **primeira diferença para estabilizá-la**
+
+* O melhor modelo a partir dos critério de informação AIC foi **SARIMA(2,1,1)(2,0,0)12**
+
+* O melhor modelo a partir dos critério de informação BIC foi **SARIMA(1,1,0)(2,0,0)12**
+
+* As raízes estão **dentro do círculo unitário** para ambos os modelos
+
+* **A previsão para abril de 2022 do Preço do Barril do Petróleo Bruto - Brent para Europa é de U$ 125,02** - com intervalo entre U\$ 116,29 e U\$ 133,75. Modelo critério AIC - SARIMA(2,1,1)(2,0,0)12
+
+* **A previsão para abril de 2022 do Preço do Barril do Petróleo Bruto - Brent para Europa é de U$ 125,92** - com intervalo entre U\$ 117,15 e U\$ 134,69.Modelo critério AIC - SARIMA(1,1,0)(2,0,0)12
+
+* Sugere-se uma revisitação do problema levando em consideração **modelos que tratem quebras estuturais**.
+
+----
+
+
+Sazonalidade em séries temporais são padrões regulares que se repetem ao longo do 
+tempo, onde **S** define o número de períodos até que o padrão volte a se repetir.
+A presença de sazonalidade pode fazer com que a série não seja estacionária, sendo
+necessário modelar esse componente para que sejamos capazes de trabalhar com a série.
+
+O modelo Seasonal ARIMA (SARIMA) permite tal abordagem, pois incorpora tanto os fatores
+não-sazonal, quanto os fatores sazonal em um modelo multiplicativo. Podendo ser 
+formalizado pela seguinte notação:
+
+$$ARIMA(p,d,q)\times(P,D,Q)S$$
+
+onde p, d, q são as ordens e diferença do modelo não sazonal e P, D, Q seu pares
+para o modelo sazonal, destaca-se que S é o intervalo de tempo que o padrão sazonal 
+se repete. Sem diferenciação o modelo pode ser representado da seguite forma:
+
+$$\phi(B^{S})\phi(B)(x_{t} - \mu) = \theta(B^{S})\theta(B)\omega_{t}$$
+
+Ao qual o componente não sazonal é representado por:
+
+$$
+AR: \phi(B) = 1 - \phi_{1}B \; - \; ... \; -\; \phi_{p}B^{p} 
+\\
+MA: \theta(B) = 1 - \theta_{1}B \; - \; ... \; -\; \theta_{q}B^{q}
+$$
+
+Por sua vez, o componente sazonal é representado por:
+
+$$
+Seasonal \; AR: \phi(B) = 1 - \phi_{1}B^{S} \; - \; ... \; -\; \phi_{P}B^{PS} 
+\\
+Seasonal \; MA: \theta(B) = 1 - \theta_{1}B^{S} \; - \; ... \; -\; \theta_{Q}B^{QS}
+$$
+
+Desta forma, iremos seguir a metodologia Box-Jenkins adaptada a modelagem da sazonalidade:
+
+![Metodologia Box Jenkins](C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Imagens/SARIMA/box-jenkins.jpeg)
+
+Para isto, utilizaremos as informações **Preço de Petróleo Bruto - Brent Europa (Preço em dólar do Barril)**, de maio de 1987 até março de 2022, com frequência mensal.
+
+
+## Instalação e Imports
+
+```{r install packages, warning=FALSE, message= FALSE}
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("janitor")
+#install.packages('seasonal')
+#install.packages('gridExtra')
+#install.packages('imputeTS')
+#install.packages('tsoutliers')
+#install.packages('forecast')
+#install.packages('MASS')
+#install.packages('tseries')
+#install.packages("urca")
+```
+
+
+```{r import packages, warning=FALSE, message= FALSE}
+# Pacote para análise de dado
+library(tidyverse) 
+
+# Pacotes para limpeza e sumarização de dados
+library(skimr)
+library(janitor)
+library(imputeTS)
+library(tsoutliers)
+
+# Dataviz
+library(ggplot2)
+library(scales)
+library(gridExtra)
+
+
+# Série Temporal
+library(seasonal)
+library(stats)
+library(forecast) 
+library(MASS) # BoxCox
+
+# Testes de estacionariedade
+library(tseries) # ADF, PP e KPSS
+library(urca) # ERS
+
+
+# Configuração número científico
+options(scipen = 999)
+```
+
+
+## Carregamento dos dados
+```{r}
+# Data loading 
+petrol = read.csv("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Dados/MCOILBRENTEU.csv") %>% 
+  as_tibble()
+
+# Ajuste do nome das colunas para minúsculo
+petrol = petrol %>% 
+  rename_with(tolower)
+
+
+# Visualizando os dados
+petrol
+```
+
+## Sumarização dos dados
+
+```{r}
+skim(petrol)
+```
+
+## Transformando em série
+
+```{r}
+serie_petrol = ts(start = c(1987,05,01), 
+                    petrol$mcoilbrenteu,
+                    freq = 12) 
+
+head(serie_petrol, 20)
+```
+## Graficamente
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(serie_petrol) + 
+  labs( y = 'Preço do Barril (U$)', 
+        x = 'Data',
+        title = 'Preço mensal do barril do Petróleo Bruto (Brent) Europa - 1987 até 2022') +
+  theme_minimal()
+
+```
+
+É perceptível que há uma quebra estrutural nos preços em meados da década de 2000,
+porém, neste momento, não estamos interessados identificar quebras estruturais. 
+Dada esta simplificação, é possível perceber uma clara tendência na série e a 
+presença de componente sazonais. A partir disso, iremos adotar as seguintes etapas:
+
+* Realizar os testes formais estacionariedade
+
+* Retirada da diferença sazonal da série
+  * Para isto adotaremos lag = 12, dado que trata-se de uma série mensal
+
+* Retirada da primeira diferença da série
+
+## Testes de estacionariedade
+
+### ADF, PP e KPSS
+
+```{r,  warning=FALSE}
+petrol %>% 
+  summarize(ADF = adf.test(mcoilbrenteu)$p.value,
+            PP = pp.test(mcoilbrenteu)$p.value,
+            KPSS = kpss.test(mcoilbrenteu)$p.value) %>% 
+  gather("Testes", "p-valor")
+  
+```
+
+Podemos verificar que pelo testes de ADF e PP **não é possível rejeitar a hipótese nula**, 
+indicando que a série possui raízes unitárias. Pelo teste de KPSS - onde a hipótese nula indica
+ausência de raíz unitária - **é possível rejeitar a hipótese nula**, sugerindo a presença
+de raíz unitária. Desta forma, os três testes iniciais indicam que a 
+**série não é estacionária**.
+
+
+Para complementar a análise de estacionaridade, realizaremoso teste ERS:
+
+### Elliot, Rothenberg e Stock - ERS
+
+```{r}
+summary(ur.ers(serie_petrol))
+```
+
+A hipótese nula do teste sugere presença de raíz unitária, como o valor calculado
+-0.6308 está dentro de todos os níveis de significância, **não podemos rejeitar a 
+hipótese nula** de presença de raíz unitária na série. Logo, o teste ERS,
+indica a **não estacionariedade** da série.
+
+Iremos aplicar a diferença sazonal da série e, se necessário, a diferença da série
+em busca da estacionariedade.
+
+
+## Checando quantidade de diferenças necessárias
+
+### Não-Sazonal
+
+```{r}
+ndiffs(serie_petrol)
+```
+
+### Sazonal
+
+```{r}
+nsdiffs(serie_petrol)
+```
+
+Os resultados acima sugerem que é necessário aplicar a primeira diferença para o 
+componente não-sazonal do nosso modelo e não há necessidade de aplicar nenhuma diferença
+para o componente sazonal. Assim, temos que **d = 1** e **D = 0**. Como trata-se de
+uma série mensal, adotaremos **S = 12**. 
+
+## Aplicando  primeira diferença
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+serie_petrol %>% 
+  diff() %>% 
+  ggtsdisplay()
+
+```
+
+Analisando a Função de Autocorrelação (ACF) é possível perceber que há um *spike* no lag
+1, sugerindo um processo de AR(1) para a série não-sazonal. Por sua vez, como há
+um *spike* significativo no lag 24 (múltiplo de S), sugere-se um AR(2) para o modelo sazonal.
+
+Analogamente, analisando a Função de Autocorrelação Parcial (PACF), podemos perceber
+que o modelo sugere até 34 ordens para o processo MA do componente não sazonal.
+Como não há nenhum spike nos lags mútiplos de S, não há sugestão de processo
+MA para o componente Sazonal.
+
+É necessário checar todas as possíveis combinações de modelo e, através dos 
+critérios de informação (AIC e BIC), selecionar o melhor modelo possível 
+- pelo princípio da parcimônia.
+
+Por questão de viabilidade, dado a quantidade de combinação de modelos necessários,
+iremos adotar a função auto.arima para nos retornar o melhor modelo para nossa
+série.
+
+## SARIMA - critério AIC
+
+```{r}
+auto.arima(serie_petrol,
+           ic = 'aic',
+           stepwise = FALSE,
+           approximation = FALSE)
+```
+
+Pelo critério AIC, temos que o melhor modelo é:
+
+$$ SARIMA(2,1,1)(2,0,0)(S = 12) $$
+
+
+## SARIMA - critério BIC
+
+```{r}
+auto.arima(serie_petrol,
+           ic = 'bic',
+           stepwise = FALSE,
+           approximation = FALSE)
+```
+
+Pelo critério BIC, temos que o melhor modelo é:
+
+$$ SARIMA(1,1,0)(2,0,0)(S = 12) $$
+
+## Estimando os modelos
+
+```{r}
+# Critério AIC
+modelo_aic = Arima(serie_petrol, 
+                   order=c(2,1,1),
+                   seasonal = c(2,0,0))
+
+# Critério BIC
+modelo_bic = Arima(serie_petrol, 
+                   order=c(1,1,0),
+                   seasonal = c(2,0,0))
+```
+
+
+## Checando Resíduos
+
+### Modelo critério AIC
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+checkresiduals(modelo_aic)
+```
+
+Como o teste de Ljung-Box **falha em rejeitar a hipótese nula**, aceitamos o erro
+como ruído branco.
+
+### Modelo critério BIC
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+checkresiduals(modelo_bic)
+```
+
+Similarmente, o teste de Ljung-Box **falha em rejeitar a hipótese nula**, aceitamos o erro
+como ruído branco.
+
+
+## Presença de Raíz Unitária
+
+
+### Modelo critério AIC
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(modelo_aic) + theme_minimal()
+
+```
+
+Podemos verificar para o modelo SARIMA(2,1,1)(2,0,0)12, os valores de $\phi$ e 
+$\theta$ estão **dentro do círculo unitário**.
+
+### Modelo critério BIC
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(modelo_bic) + theme_minimal()
+
+```
+
+
+Podemos verificar para o modelo SARIMA(1,1,0)(2,0,0)12, os valores de $\phi$
+estão **dentro do círculo unitário**. Neste caso, não há componente MA em nenhum
+dos modelos - sazonal ou não-sazonal.
+
+
+## Previsão
+
+## Modelo critério AIC
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+
+forecast(modelo_aic)
+
+```
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(forecast(modelo_aic)) + theme_minimal()
+```
+
+O modelo SARIMA(2,1,1)(2,0,0)12 a previsão para Abril de 2022 o preço do Barril de 
+Petróleo Bruto - BRENT Europa será de **U$ 125,02**. Seguidos por uma queda considerável
+do preço no meses a seguir.
+
+
+## Modelo critério BIC
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+
+forecast(modelo_bic)
+
+```
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(forecast(modelo_bic)) + theme_minimal()
+```
+
+Por sua vez, o modelo SARIMA(1,1,0)(2,0,0)12 a previsão para Abril de 2022 o preço do Barril de 
+Petróleo Bruto - BRENT Europa será de **U$ 125,92**. Todavia, o modelo capta uma queda mais suave
+do preço do barril de petróleo.
+
+## Referências
+
+HYNDMAN, Rob J.; ATHANASOPOULOS, George. **Forecasting: principles and practice**. OTexts, 2018.
+
+[PennState](https://online.stat.psu.edu/stat510/lesson/4/4.1)
+[RPubs](https://rpubs.com/ryankelly/tsa5)
+

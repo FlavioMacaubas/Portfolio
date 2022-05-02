@@ -1,0 +1,509 @@
+---
+title: "Business Cycle"
+author: "Flávio Macaúbas Torres Filho e José Carlos Claudino Filho"
+date: "28/04/2022"
+output: html_document
+---
+
+# Business Cycle - Ciclo de Negócios
+
+
+## Principais Conclusões
+
+
+* Ciclos econômicos são importantes para definição das expectativas dos agentes econômicos (públicos e privados)
+
+* Ciclo são subdivididos em 4 estágios: expansão, boom, contração e recessão
+
+* O filtro de Kalman e Média Móvel são capazes de suavizar a série e indicam movimento de **Expansão cíclica**
+
+* A primeira e segunda diferença da série sugerem que estamos em um estágio de **Contração cíclica**
+
+* O filtro HP e BK ajustado para ciclo de Juglar indicam estágio de **Boom Econômico**
+
+* O filtro BK ajustado para ciclo de Kitchin sugere que estamos num movimento de **Expansão Cíclica**
+
+* O filtro CF para ambos ajustes, Kitchin e Juglar, sugerem **Contração cíclica** 
+
+----
+
+Mensurar o ciclo de negócios tem importante relevância na literatura econômica, as razões
+são as variadas mas podemos simplificá-las em dois principais fatores: **Condução da Política Pública**
+e **Decisões Estratégicas de Negócio**. De forma que o ciclo econômica impacta diretamente
+as deciões tanto dos agentes governamentais, quanto dos agentes privados.
+
+De forma didática, caso o país esteja em um movimento de recessão, o governo pode criar um pacote
+de políticas públicas que incentivem os empresários a contratar (ou reter mão de obra). No caso 
+de um cenário de expensão, o governo pode retrair suas medidas e deixar o mercado alocar os recursos
+conforme suas necessidades.
+
+Pelo lado da firma, no caso hipotético de criação de um negócio,
+se a conjuntura econômica não for favorável, no caso de uma recessão, os empresários podem reter
+seu investimento até que se inicie um processo de expansão econômica, e viceversa.
+
+Aqui cabe destacar que não estamos particularmente interessados em discutir quais os verdadeiros
+efeitos de um ciclo sob as decisões dos empresários e/ou do governo. Cada corrente econômica
+interpreta o ciclo, e o que fazer diante dos cenários, da forma que seu arcabouço teórico sugere.
+
+Destaca-se ainda que existem alguns ciclos com durações pré-definidas, no caso de aprofundamento
+ver:
+
+* Ciclo de Kitchin (3 - 4 anos) 
+
+* Ciclo de Juglar (7 - 10 anos)
+
+* Ciclo de Kuznets (15 - 20 anos)
+
+* Ondas de Kondratiev (50 anos)
+  
+  + Ver a contribuição de Schumpeter às evidências encontradas por Kondratiev
+
+*Ceteris Paribus*, quando há um movimento de expansão do ciclo econômico, as condições 
+econômicas são mais favoráveis, no caso de recessão, as condições econômicas são desfavoráveis.
+O ciclo econômico pode ser graficamente descrito por:
+
+![Fonte: Weinvest](C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Imagens/BUSINESS-CYCLE/fases-do-ciclo-economico-WeInvest.jpg)
+
+Ao final de uma recessão, o movimento reinicia começando uma expansão, boom, etc.
+**A principal importância** de indentificar o ciclo surge exatamente dessa intuição
+gráfica. Podemos elencar algumas perguntas que ficam ao imaginário do leitor: 
+Qual decisão econômica devemos tomar se identificarmos que estamos no Boom? E se estivermos
+na recessão, esta decisão muda?
+
+Uma série temporal é composta por ciclo-tendência, sazonalidade e irregularidades.
+Para fazer previsões utlizando os métodos de série temporal, é necessário a remoção
+das flutuações que "contaminam" o verdadeiro comportamento da série. 
+
+Um bom filtro é capaz de remover as raízes unitárias e o componente cíclico, em outras
+palavras, ser capaz de isolar as flutuações dos dados em frequências pré-determinadas.
+
+
+Naturalmente, ao aplicar um filtro, seremos capazes de isolar o componente cíclico
+da série. Para o nosso caso, estamos interessados na mensuração dos **Cíclos de Negócio**
+do Brasil. Para isto, faremos uma introdução cronológica dos principais métodos adotados.
+
+
+Neste ensaio, não iremos aprofundar na matemática e demonstração das técnicas, todavia,
+todos os trabalhos seminais estão devidamente referenciados para que os interessados
+possam consultar.
+
+## Instalação e Imports
+
+```{r install packages, warning=FALSE, message= FALSE}
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("janitor")
+#install.packages('seasonal')
+#install.packages('gridExtra')
+#install.packages('imputeTS')
+#install.packages('tsoutliers')
+#install.packages('forecast')
+#install.packages('MASS')
+#install.packages('tseries')
+#install.packages("urca")
+#install.packages("zoo")
+#install.packages("KFAS")
+#install.packages("TTR")
+#install.packages("mFilter")
+#install.packages("quantmod")
+```
+
+
+```{r import packages, warning=FALSE, message= FALSE}
+# Pacote para análise de dado
+library(tidyverse) 
+
+# Pacotes para limpeza e sumarização de dados
+library(skimr)
+library(janitor)
+library(imputeTS)
+library(tsoutliers)
+
+# Dataviz
+library(ggplot2)
+library(scales)
+library(gridExtra)
+library(quantmod)
+
+# Maniplação de datas
+library(zoo)
+
+# Série Temporal
+library(seasonal)
+library(stats)
+library(forecast) 
+library(MASS) # BoxCox
+
+# Testes de estacionariedade
+library(tseries) # ADF, PP e KPSS
+library(urca) # ERS
+
+# Filtragens
+library(KFAS) # Kalman
+library(mFilter) # HP
+
+# Méidas móvel
+library(TTR)
+
+
+# Configuração número científico
+options(scipen = 999)
+```
+
+
+## Carregamento dos dados
+
+```{r}
+# Data loading 
+pib = read.csv("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Dados/pib_trimestral_brasil.csv", sep = ',') %>% 
+  rename(data = ï..data)  %>%
+  dplyr::select(data, pib) %>% 
+  as_tibble()
+
+# Ajustando coluna de datas
+pib = pib %>% 
+  mutate(data = as.Date(as.yearqtr(format(data), "%Y T%q")))
+
+# Visualizando os dados
+pib
+```
+
+## Estatísticas desctriva
+
+```{r}
+skim(pib$pib)
+```
+
+
+## Criando série Temporal
+
+
+```{r}
+serie_pib = ts(start = c(1996,01,01), 
+                    pib$pib,
+                    freq = 4) 
+
+tail(serie_pib, 20)
+```
+
+## Filtros
+
+
+### Kalman
+
+**Preparando para filtro kalman**
+
+
+SSModel é o "State Space Model", nós iremos regredir o PIB pela sua tendência suavizada
+SSMtrend. Os parâmetro Q e H denotam covariância não variante estimada sem restrições. Por
+simplificação, os valores adotados são os *default* sugeridos por Kalman.
+
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+kalman = pib %>%
+  mutate(log_pib = log(pib)) # Log natural
+
+log_model = SSModel(kalman$log_pib ~ SSMtrend(1, Q = 0.01), H = 0.01)
+
+resul_kalman = KFS(log_model)
+
+kalman = kalman %>% 
+  mutate(a = exp(resul_kalman$a[1:104]),
+         att = exp(resul_kalman$att),
+         alpha = exp(resul_kalman$alpha))
+
+kalman %>% 
+  filter(data >= "2017-01-01") %>% 
+  ggplot(aes(x = data)) +
+  geom_line(aes(y = pib, colour = 'PIB'), size = 1, 
+            alpha = .7) +
+  geom_line(aes(y = a, colour = 'One-step-ahead predictions of states'), size = 1, 
+            alpha = 0.3, 
+            linetype="dashed") +
+  geom_line(aes(y = att, colour = 'Filtered estimates of states'), size = 1, 
+            alpha = 0.3,
+            linetype="dashed") +
+  geom_line(aes(y = alpha, colour = 'Smoothed estimates of states'), size = 1,
+            alpha = 1) +
+  scale_color_manual(name = '', values = c('PIB' = 'black',
+                                           'One-step-ahead predictions of states' = 'darkgreen',
+                                           'Filtered estimates of states' = 'cyan',
+                                           'Smoothed estimates of states'= 'red')) +
+  labs(y = 'Milhões de R$', x = 'Data', title  = 'Produto Interno Bruto Brasil') +
+  theme_minimal() +
+  theme(legend.position="bottom")
+
+```
+
+Filtramos a série apenas para os valores após 2017 para que fique mais fácil a visualização
+dos valores filtrados. Percebe-se que o componente suavizado "Smoothed estimates of states"
+é capaz de retirar os componente irregulares. 
+
+Podemos interpretar os momentos em que a linha preta está abaixo da linha vermelha como
+momento de contração/recessão, e quando a linha preta está acima da linha vermelha, momentos
+de expansão e boom.
+
+**O filtro de Kalman é capaz de suavizar a série para seu componente cíclico.** Além disso,
+podemos perceber que, de acordo com filtro de Kalman, estamos nos aproximando do estágio de
+Boom do ciclo econômico.
+
+## Kalman vs Média Móvel Exponencial
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+kalman = kalman %>% 
+  mutate(mme = SMA(pib, n = 4)) %>% 
+  as_tibble()
+
+
+kalman %>% 
+  filter(data >= "2017-01-01") %>% 
+  ggplot(aes(x = data)) +
+  geom_line(aes(y = pib, colour = 'PIB'), size = 1, 
+            alpha = .7) +
+  geom_line(aes(y = mme, colour = 'Média Móvel - 4 trimestres'), size = 1, 
+            alpha = 1) +
+  geom_line(aes(y = alpha, colour = 'Smoothed estimates of states'), size = 1,
+            alpha = 1) +
+  scale_color_manual(name = '', values = c('PIB' = 'black',
+                                           'Média Móvel - 4 trimestres' = 'darkgreen',
+                                           'Smoothed estimates of states'= 'red')) +
+  labs(y = 'Milhões de R$', x = 'Data', title = 'Produto Interno Bruto Brasil') +
+  theme_minimal() +
+  theme(legend.position="bottom")
+
+```
+
+Média móvel só é capaz de captar variações bruscas do PIB, como no caso da Covid-19.
+Percebe-se que os períodos de boom e recessão (picos e vales) estão subestimados.
+De forma geral, a média móvel é capaz de suavizar a série para esses movimentos irregulares,
+porém é pouco sensível a oscilações menos abruptas. Note que, de acordo com seu objetivo
+a média móvel pode ser uma boa solução. 
+
+
+## Primeira Diferença
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+primeira_diff = diff(serie_pib)
+
+autoplot(primeira_diff) + 
+  labs(y = 'Milhões de R$', x = 'Data', title = 'Primeira Diferença Produto Interno Bruto Brasil') +
+  theme_minimal()
+```
+
+A primeira diferença também é capaz de extrair o componente cíclico da série, percebe-se
+que para este caso o ciclo é bastante períodico e provavelmente estacionário - é necessário
+fazer os testes formais de estacionariedade para garantir esta hipótese. Por hora, podemos
+testar quantas diferenças são necessárias para estacionar nossa série.
+
+```{r}
+ndiffs(serie_pib)
+```
+
+O código acima sugere a segunda diferença para estacionar nossa série, dessa forma, podemos
+verificar o comportamento da nossa série a partir da segunda diferença.
+
+## Segunda Diferença
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+segunda_diff = diff(serie_pib,2)
+
+autoplot(segunda_diff) + 
+  labs(y = 'Milhões de R$', x = 'Data', title = 'Segunda Diferença Produto Interno Bruto Brasil') +
+  theme_minimal()
+```
+
+Dessa forma, temos um componente cíclico bem definido e estacionário da nossa série.
+Veja que o esta tecnica sugere que estamos no aproximando de um período de **recessão**
+da economia.
+
+
+## Hodrick Prescott Filter (HP Filter)
+
+O filtro HP, o mais comum na economia, é capaz de estimar os componentes cíclico
+e tendência da série. Este filtro pressupõe que a tendência da série tem uma distribção
+aleatória e não-correlata ao componente cíclico.
+
+Para implementá-lo, devemos atentar ao valores sugeridos para $\lambda$ de acordo
+com os valores estimados pelos autores:
+
+* $\lambda = 100$ ou $\lambda = 400$, para séries anuais
+
+* $\lambda = 1600$, para séries trimestrais
+
+* $\lambda = 14400$, para séries mensais
+
+Dado que estamos trabalhando com o PIB trimestral do Brasil, iremos adotadar
+**$\lambda = 1600$**. Partindo do pressuposto que este o valor correto, iremos
+demonstrar como diferentes lambda podem afetar a estimação dos componentes.
+
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+hpf = hpfilter(pib$pib, freq = 1600)
+
+plot(hpf)
+```
+
+Similarmente ao filtro de Kalman, o filtro 
+**HP sugere, pelo componente cíclico estimado, que já estamos nos aproximando de um momento de Boom**, 
+indicando que a economia estará entrando em seu estágio de recessão em um futuro próximo.
+
+
+## Baxter-King (BK Filter)
+
+No filtro BK, os autores entendem que os demais método de suavização são *ad hoc*,
+pois não há controle sob a definição dos filtros. Em decorrência, o filtro BK adicionará
+um controle *band-pass* sob a técnica de filtragem. 
+
+O filtro eliminará o componente de tendência e irregular, restando o componente intermediário
+que é o ciclo. De forma simplificada podemos assumir três tipos de frequências em uma série:
+
+
+* Frequência baixa - Tendência
+
+* Frequência alta - Irregular
+
+* Frequência intermediária - Ciclo
+
+  + Entende-se como frequência intermediária tudo entre a baixa frequência e alta frequência.
+  
+  
+### BK Filter ajustado para ciclos de Kitchin
+
+Neste primeiro momento, ajustaremos o filtro de Baxter-King para o ciclo de 
+Kitchin (3 - 4 anos).
+  
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+bkf_kitchin = bkfilter(pib$pib, pl = 12, pu = 16, type = "variable")
+
+plot(bkf_kitchin)
+```
+
+Por esta abordagem é possível perceber que o filtro 
+**Baxter-King indica que estamos em um estágio de expansão**, 
+porém não há indicações de inflexão no do ciclo. Dito isto,
+não podemos inferir se estamos chegando a o fim da fase de expansão.
+
+### BK Filter ajustado para ciclos de Juglar
+
+Alternativamente, ajustaremos o filtro de Baxter-King para o ciclo de 
+Juglar (7 - 10 anos).
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+bkf_juglar = bkfilter(pib$pib, pl = 28, pu = 40, type = "variable")
+
+plot(bkf_juglar)
+```
+
+Podemos verificar que por esta abordagem teórica alternativa, o componente cíclico
+extraído por BK **sugere que estamos nos aproximando do estágio de Boom**. Novamente, não há
+qualquer indicativo de inflexão do componente cíclico do PIB.
+
+## Christiano Fitzgerald (CF Filter)
+
+Similar ao filtro BK, o filtro CF também opera sob condições de *band-pass* ideal, permitindo
+um maior controle sob a definição do ciclo. Enquanto o filtro BK assume um comportamento
+simétrico da média móvel para aproximar o band-pass, o filtro CF assume que a série segue
+um comportamento aleatório sem drift.
+
+
+**Não ajustamos o filtro BK para outros tipo de definições de ciclo dado a limitação de observações dos dados**
+
+### CF filter - ajustado para ciclo de Kitchin
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+cff_kitchin = cffilter(pib$pib, pl = 12, pu = 16)
+
+plot(cff_kitchin)
+```
+
+Diferente do filtro BK, o componente cíclico do 
+**filtro CF capta que estamos nos aproximando do momento de contração do ciclo econômico**, 
+onde já é possível perceber uma inflexão da curva.
+
+### CF filter - ajustado para ciclo de Juglar
+
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+cff_juglar = cffilter(pib$pib, pl = 28, pu = 40)
+
+plot(cff_juglar)
+```
+
+Por sua vez, o filtro CF ajustado para os ciclos de Juglar indica que estamos começando
+um movimento de **arrefecimento do ciclo econômico - estágio de contração**. 
+
+
+## HP, BK e CF
+
+```{r, echo=TRUE, fig.height=5, fig.width=8, warning=FALSE}
+
+ciclos = data.frame(pib$data, hpf$cycle, bkf_kitchin$cycle, cff_kitchin$cycle)
+
+ciclos %>% 
+  ggplot(aes(x = pib.data)) +
+  geom_line(aes(y = hpf.cycle, colour = 'HP Filter'), size = 1) +
+  geom_line(aes(y = bkf_kitchin.cycle, colour = 'BK Filter'), size = 1) +
+  geom_line(aes(y =  cff_kitchin.cycle, colour = 'CF Filter'), size = 1) +
+  scale_color_manual(name = '', values = c('HP Filter' = 'cadetblue4',
+                                           'BK Filter' = 'darkorchid2',
+                                           'CF Filter'= 'salmon')) +
+  labs(y = 'Milhões de R$', x = 'Data', title = 'Componente Cíclico do PIB Brasileiro') +
+  theme_minimal() +
+  theme(legend.position="bottom")
+
+  
+```
+
+
+Desta forma é perceptível identificar as diferenças no comportamento do ciclo de acordo
+com a técnica e calibração dos modelos adotados. Há momentos em que o HP mensura dois ciclos
+completos, enquanto o CF identifica apenas um. Por sua vez, o filtro BK é menos sensível
+a variações de curtíssimo prazo. Os filtros CF e HP são capazes de captar uma maior intensidade
+dos ciclos desde o ano de 2012, enquanto o BK parece não reagir a este cenário.
+
+Vale mais uma vez enfatizar que os filtros BK e CF possuem restrições de *band-pass*, por isso
+que há diferenças consideráveis nos ciclos captados.
+
+
+## Considerações Finais
+
+Os ciclos econômicos são importante aspecto da atividade econômica do país, indentificar
+em qual estágio do ciclo estamos permite uma maior precisão na decisão dos agentes econômicos
+(públicos e privados). Existem diversas formas de captar o componente ciclo das séries,
+filtros seminais não permitem o controle da definição dos períodos dos ciclos - MME, Kalman, Primeira Diferença, HP.
+
+
+Por sua vez, filtros mais recentes como BK e CF permitem um maior controle do pesquisador em relação aos ciclos. 
+Por um lado, estes são mais flexíveis a diferentes referenciais teóricos da definição da periodicidade dos
+ciclos, por outro lado, há diferentes interpretações da duração do ciclo que podem afetar os resultados da estimação do
+componente e comprometer a análise do cientista/pesquisador/analista.
+
+Não há forma certa ou errada de decompor uma série, porém, deve-se ter cuidado com a calibração correta dos
+modelos - principalmente do fator $\lambda$ do filtro HP. Diferentes técnicas podem culminar em diferentes resultados,
+cabendo a cautela teórica do pesquisador para interpretar seus resultados.
+
+
+## Referências
+
+
+### Filtros
+
+KALMAN, Rudolph Emil. **A new approach to linear filtering and prediction problems**. 1960.
+
+HODRICK, Robert J.; PRESCOTT, Edward C. **Postwar US business cycles: an empirical investigation**. Journal of Money, credit, and Banking, p. 1-16, 1997.
+
+BAXTER, Marianne; KING, Robert G. **Measuring business cycles: approximate band-pass filters for economic time series**. Review of economics and statistics, v. 81, n. 4, p. 575-593, 1999.
+
+CHRISTIANO, Lawrence J.; FITZGERALD, Terry J. The band pass filter. international economic review, v. 44, n. 2, p. 435-465, 2003.
+
+
+### Ciclo Econômicos
+
+KOROTAYEV, Andrey V.; TSIREL, Sergey V. A spectral analysis of world GDP dynamics: Kondratieff waves, Kuznets swings, Juglar and Kitchin cycles in global economic development, and the 2008–2009 economic crisis. **Structure and Dynamics**, v. 4, n. 1, 2010.
+
+
+### Sítios 
+
+[India Analytics Magazine](https://analyticsindiamag.com/a-complete-tutorial-on-time-series-filters/)
+
+[Data Science Plus](https://datascienceplus.com/kalman-filter-modelling-time-series-shocks-with-kfas-in-r/)

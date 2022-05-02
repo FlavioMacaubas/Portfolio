@@ -1,0 +1,354 @@
+---
+title: "ARIMA"
+author: "Flávio Macaúbas Torres Filho e José Carlos Claudino Filho"
+date: '2022-04-12'
+output: html_document
+---
+
+# Modelo ARIMA(p,d,q)
+
+## Principais conclusões:
+
+* A série utilizada é o Preço do Barril do Petróleo Bruto - Brent da Europa (U$)
+
+* A série não é estacionária, tivemos que aplicar a **primeira diferença para estabilizá-la**
+
+* O melhor modelo a partir dos critérios de informação AIC e BIC foi **ARIMA(1,1,0)**
+
+* As raízes estão **dentro do círculo unitário**
+
+* **A previsão para abril de 2022 do Preço do Barril do Petróleo Bruto - Brent para Europa é de U$ 125,07** - com intervalo entre U\$ 119,25 e U\$ 137,97.
+
+* Sugere-se uma revisitação do problema levando em consideração modelo que tratem quebras estuturais.
+
+----
+O ARIMA é um modelo auto-regressivo integrado de médias móveis, sendo uma generalização
+do modelo ARMA que é um processo autoregressivo de ordem p e de médias móveis de ordem q
+- ARMA(p,q).
+
+A parte autoregressiva pode ser generalizada da seguinte forma:
+
+$$ X_{t} = c + \sum_{i = 1}^{p} \phi X_{t-i} + \epsilon_{t}$$
+Em que, **p é número de defasagens**.
+
+Por sua vez o modelo de média móvel pode ser descrito pela seguinte equação:
+
+$$  X_{t} = \mu + \sum_{i=1}^{q} \theta \epsilon_{t-i} + \epsilon_{t} $$
+Em que, **q é a ordem do modelo**.
+
+Consequentemente o modelo ARIMA(p,d,q), pode ser descrito:
+
+$$ (1 - \sum_{i=1}^{p}\alpha_{i}L^{i}) (1-L)^{d}X_{t} = \delta + (1 +\sum_{i=1}^{q}\theta_{i}L^{i})\epsilon_{t}  $$
+Em que, **d representa o grau de diferenciação**.
+
+
+De forma a respeitar as condições de estabilidade e invertibilidade, deve-se que:
+
+$$  \sum_{i=1}^{p}|\alpha_{i}| < 1  $$ - condição de estacionariedade
+
+$$  \sum_{i=1}^{q}|\theta_{i}| < 1  $$ - condição de invertibilidade
+
+De fomr a fazer a correta identificação do modelo, adotaremos as etapas da
+metodologia de Box-Jenkins:
+
+![Box-jenkins](C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Imagens/ARIMA/box-jenkins.jpeg)
+
+Para isto, utilizaremos as informações **Preço de Petróleo Bruto - Brent Europa (Preço em dólar do Barril)**, de maio de 1987 até março de 2022, com frequência mensal.
+
+
+## Instalação e Imports
+
+```{r install packages, warning=FALSE, message= FALSE}
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("janitor")
+#install.packages('seasonal')
+#install.packages('gridExtra')
+#install.packages('imputeTS')
+#install.packages('tsoutliers')
+#install.packages('forecast')
+#install.packages('MASS')
+#install.packages('tseries')
+```
+
+
+```{r import packages, warning=FALSE, message= FALSE}
+# Pacote para análise de dado
+library(tidyverse) 
+
+# Pacotes para limpeza e sumarização de dados
+library(skimr)
+library(janitor)
+library(imputeTS)
+library(tsoutliers)
+
+# Dataviz
+library(ggplot2)
+library(scales)
+library(gridExtra)
+
+
+# Série Temporal
+library(seasonal)
+library(stats)
+library(forecast) 
+library(MASS) # BoxCox
+library(tseries) # Testes de estacionariedade
+
+# Configuração número científico
+options(scipen = 999)
+```
+
+
+## Leitura dos dados
+```{r}
+# Data loading 
+petrol = read.csv("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Dados/MCOILBRENTEU.csv") %>% 
+  as_tibble()
+
+# Ajuste do nome das colunas para minúsculo
+petrol = petrol %>% 
+  rename_with(tolower)
+
+
+# Visualizando os dados
+petrol
+```
+## Sumarização dos dados
+```{r}
+skim(petrol)
+```
+
+## Transformando em série
+```{r}
+serie_petrol = ts(start = c(1987,05,01), 
+                    petrol$mcoilbrenteu,
+                    freq = 12) 
+
+head(serie_petrol, 20)
+```
+
+## Realizando ajuste sazonal da série
+```{r}
+serie_petrol_ajust = serie_petrol %>% stl(s.window = 'periodic') %>% seasadj()
+
+head(serie_petrol_ajust, 20)
+```
+
+## Graficamente
+
+### Série Histórica
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+petrol = petrol %>% mutate(serie_ajust = serie_petrol_ajust)
+
+petrol %>% 
+  pivot_longer(-c(date)) %>% 
+  ggplot(aes(x = date, y = value, color = name, group = name)) +
+  geom_line() +
+  labs(y = 'Preço do Barril (U$)', 
+       x = 'Data',
+       color = 'Séries') +
+  facet_wrap(~name, nrow = 2) +
+  theme_minimal()
+```
+
+### Distribuição
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+petrol %>% 
+  pivot_longer(-c(date)) %>% 
+  ggplot(aes(x = value, group = name, fill = name)) +
+  geom_histogram(color = 'black', bins = 30) +
+  labs(y = 'Frequência', 
+       x = 'Valores',
+       fill = 'Séries') +
+  facet_wrap(~name, nrow = 2) +
+  theme_minimal()
+```
+
+## Transformação Box-Cox
+
+O objetivo da transformação Box-Cox é controlar a variância da série. Formalmente 
+definido por:
+
+$$
+\left\{\begin{matrix}
+\frac{x^{\lambda}-1}{\lambda}, \;se \;\lambda \neq 0 
+\\ log(x), \;se \;\lambda = 0 
+
+\end{matrix}\right.
+$$
+
+Para isto, encontraremos o valor de lambda e utilizaremos a seguinte tabela de referência:
+
+![Box-Cox](C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Imagens/ARIMA/box-cox.png)
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+boxcox = boxcox(lm(petrol$serie_ajust ~ 1))
+
+
+```
+
+Utilizaremos **transformação em log** da série devido ao fato do valor de lambda está muito
+próximo de zero.
+
+```{r}
+lambda = boxcox$x[which.max(boxcox$y)]
+petrol = petrol %>% mutate(bc_petrol = log(serie_petrol_ajust))
+
+petrol
+```
+### Graficamente
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+petrol %>% 
+  ggplot(aes(x = bc_petrol)) +
+  geom_histogram(color = 'black', 
+                 fill = 'cyan', 
+                 bins = 30) +
+  labs(y = 'Frequência', 
+       x = 'Valores') +
+  theme_minimal()
+```
+
+### Teste de normalidade de Shapiro-Wilk
+```{r}
+shapiro.test(petrol$bc_petrol)
+```
+A transformação de Box-Cox **falha em prover um modelo com distribuição normal**. Em decorrência,
+partiremos para diferenciação da série.
+
+## Diferenciação
+
+### Primeira Diferença
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+primeira_diff = diff(serie_petrol)
+
+
+autoplot(primeira_diff) + 
+  labs(title = "Primeira diferença da série") + 
+  theme_minimal()
+```
+
+Com a primeira diferença (d = 1), temos um modelo aparentemente estacionário da série.
+
+## Testes de estacionariedade
+
+### Augmented Dickey Fuller - ADF
+
+Podemos formalizar o teste ADF considerando a seguinte abordagem:
+
+$$ \Delta Y_{t} = \alpha + \beta t + [\phi - 1]Y_{t-1} + \psi \Delta Y_{t-1} + \epsilon_{t}$$
+Queremos testar se $\phi$ é igual a 1.
+
+```{r}
+adf.test(primeira_diff)
+```
+Como p-valor é menor que 0.05, não podemos rejeitar a hipótese nula. Indicando que a
+**série é estacionária**.
+
+### Kwiatkowski-Phillips-Schmidt-Shin (KPSS)
+
+
+#### Level
+```{r}
+kpss.test(primeira_diff, 'L')
+```
+
+#### Trend
+```{r}
+kpss.test(primeira_diff, 'T')
+```
+
+Ambos os teste **não** falham em rejeitar a hipótese nula, portanto **não podemos aceitar a hipótese de estacionariedade da série**.
+
+
+### Phillips-Perron (PP)
+
+```{r}
+pp.test(primeira_diff)
+```
+
+O teste de PP falha em rejeitar a hipótese nula, indicando que a **série é estacionária**.
+
+## Encontrando Modelo Adequado
+
+Encontrando a **Função de Autocorrelação (ACF)** e **Função de Autocorrelação Parcial (PACF)**.
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+primeira_diff %>% ggtsdisplay(main = "")
+```
+
+A PACF sugere um processo autoregressivo de até 34 ordens, enquanto o processo de média
+móvel sugere um modelo de ordem 24. Iremos selecionar o melhor modelo, dentre todas
+as possíveis combinações, a partir do critério AIC e BIC.
+
+```{r}
+auto.arima(serie_petrol, max.p = 34, max.q = 24, ic = c("aic"), test = c('kpss'))
+```
+```{r}
+auto.arima(serie_petrol, max.p = 34, max.q = 24, ic = c("bic"), test = c('kpss'))
+```
+
+O auto arima calibrado para as especificações da ACF e PACF resultou no melhor modelo
+ARIMA(1,1,0) para o critério AIC e ARIMA(0,1,2) para o critério BIC. **Adotaremos
+o critério BIC**, levando em consideração que nossa prioriedade são estimações consistentes.
+
+
+## Estimando o modelo
+```{r}
+modelo_1 = Arima(serie_petrol, order=c(0,1,2))
+
+modelo_1
+```
+
+## Checando Resíduo
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+checkresiduals(modelo_1)
+```
+
+Como o teste de Ljung-Box falha em rejeitar a hipótese nula, aceitamos que esse
+resíduo é um ruído branco (white noise).
+
+## Checando teste de raíz unitária
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(modelo_1) + theme_minimal()
+
+```
+
+Podemos verificar que para o nosso modelo ARIMA(0,1,2), o valor de $\phi$ está 
+dentro do círculo unitário.
+
+## Previsão
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(forecast(modelo_1)) + theme_minimal()
+```
+
+
+```{r}
+forecast(modelo_1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
