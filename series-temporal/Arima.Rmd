@@ -9,15 +9,19 @@ output: html_document
 
 ## Principais conclusões:
 
+* A série foi dessazonalizada
+
 * A série utilizada é o Preço do Barril do Petróleo Bruto - Brent da Europa (U$)
 
 * A série não é estacionária, tivemos que aplicar a **primeira diferença para estabilizá-la**
 
-* O melhor modelo a partir dos critérios de informação AIC e BIC foi **ARIMA(1,1,0)**
+* O melhor modelo a partir dos critério de informação BIC foi **ARIMA(0,1,2)**
+
+* **Há presença de autoccorelação serial no resíduo do modelo.** Inidicando que o ARIMA não é suficiente para nossa série.
 
 * As raízes estão **dentro do círculo unitário**
 
-* **A previsão para abril de 2022 do Preço do Barril do Petróleo Bruto - Brent para Europa é de U$ 125,07** - com intervalo entre U\$ 119,25 e U\$ 137,97.
+* **A previsão para abril de 2022 do Preço do Barril do Petróleo Bruto - Brent para Europa é de U$ 124,45** - com intervalo entre U\$ 115,56 e U\$ 133,33.
 
 * Sugere-se uma revisitação do problema levando em consideração modelo que tratem quebras estuturais.
 
@@ -307,8 +311,7 @@ modelo_1
 checkresiduals(modelo_1)
 ```
 
-Como o teste de Ljung-Box falha em rejeitar a hipótese nula, aceitamos que esse
-resíduo é um ruído branco (white noise).
+Alguns autores sugerem que 20 lags na ACF é suficiente para inferir que o resíduo é ruído branco. Podemos verificar também que a distribuição se assemelha bastante com uma normal. Porém, por excesso de cautela, realiza um teste Ljung-Box onde o p-valor < 0.05, indicando que nosso resíduo não é ruído branco (white noise).
 
 ## Checando teste de raíz unitária
 
@@ -317,10 +320,14 @@ autoplot(modelo_1) + theme_minimal()
 
 ```
 
-Podemos verificar que para o nosso modelo ARIMA(0,1,2), o valor de $\phi$ está 
-dentro do círculo unitário.
+Podemos verificar que para o nosso modelo ARIMA(0,1,2), o valor de $\theta$ está 
+dentro do círculo unitário. Veja que como não há um fator auto-regressivo no modelo escolhido, não é necessário checar as condições de estacionariedade.
 
 ## Previsão
+
+A previsão com modelo ARIMA é para o curtíssimo prazo, no máximo 2 meses a frente. No gráfico abaixo vocês podem verificar que o intervalo de confiança aumenta rapidamente e que o valor das previsões converge para sua média. 
+
+O valor previsto para o preço do Barril de Petróleo Bruto - Brent Europa para abril de 2022 é de U$ 124,45, com intervalo entre U$ 115,56 e U$ 133,33. 
 
 ```{r, echo=TRUE, fig.height=5, fig.width=8}
 autoplot(forecast(modelo_1)) + theme_minimal()
@@ -331,7 +338,13 @@ autoplot(forecast(modelo_1)) + theme_minimal()
 forecast(modelo_1)
 ```
 
+## Conclusão
 
+Trabalhamos com a série a dessazonalizada e a transformação de Box-Cox falhou em prover uma série com distribuição normal. Foi necessário a realização da primeira diferença da série para estabilizá-la, onde todos os três testes propostos (ADF, PP e KPSS) sugeriram uma série estacionária.
+
+O melhor modelo estimado pelo critério BIC é o ARIMA(0,1,2), porém, o modelo falhou em prover um ruído branco, indicando que nosso modelo não é apropriado para previsão. Mesmo diante desta limitação, seguiu-se com as etapas da metodologia Box-Jenkins, onde foi observado que as condições de invertibilidade são respeitadas.
+
+A previsão do Preço do Barril do Petróleo Bruto - Brent para Europa é de U$ 124,45, com intervalo entre U$ 115,56 e U$ 133,33. Porém, qualquer acerto diante do cenário citado é mais obra do acaso do que robustez da técnica. Exatamente por esta razão, em uma próxima publicação, traremos o modelo SARIMA, onde o fator sazonal é modelado juntamente com o modelo ARIMA.
 
 
 
