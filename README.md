@@ -5,7 +5,7 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
 
 ## Econometria de Séries Temporais
 
-  ### [Modelo ARIMA](https://github.com/FlavioMacaubas/Portfolio/tree/master/series-temporal](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Arima.Rmd)
+  ### [Modelo ARIMA](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Arima.Rmd)
   ### [Modelo SARIMA](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/SARIMA.Rmd)
   ### [Ciclo de Negócios](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Business-Cycle.Rmd)
   ### [Quebra-Estrutural](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Quebra-Estrutural.Rmd)
@@ -14,11 +14,11 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
 
   ### [DataFrames](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-df)
   ### [Machine Learning](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml)
-    * [Regressão Linear](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/linear-regression)
-    * [Regressão Logística](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/logistic-regression)
-    * [Métodos de Árvore](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/tree-methods)
-    * [K-Means](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/k-means)
-    * [Sistema de Recomendação](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/recomendation-system)
+    #### [Regressão Linear](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/linear-regression)
+    #### [Regressão Logística](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/logistic-regression)
+    #### [Métodos de Árvore](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/tree-methods)
+    #### [K-Means](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/k-means)
+    #### [Sistema de Recomendação](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/recomendation-system)
   
 ## Análise Impacto
 
