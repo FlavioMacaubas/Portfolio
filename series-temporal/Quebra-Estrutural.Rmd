@@ -1,0 +1,414 @@
+---
+title: "Quebra Estrutural"
+author: "Flávio Macaúbas Torres Filho e José Carlos Claudino Filho"
+date: "04/05/2022"
+output: html_document
+---
+
+# Quebra Estrutural
+
+Quebras estruturais acontecem quando há mudanças abruptas em algum ponto da série.
+Esta mudança pode ser tanto na média, como nos outros parâmetros do processo gerador
+da série. 
+
+Esta falta de consistência nos parâmetros da série acarreta em falhas de previsão. 
+Além disso, na presença de quebra-estrutural, a maioria dos testes de estacionariedade 
+perdem poder.
+
+Idealmente, nós queremos identificar se nossa série possui quebra estrutural para que
+possamos aplicar os testes adequados e modelos adequados - os modelos Threshold são
+uma boa opção quando há presença de quebra(s) estrutural(ais).
+
+Diferente dos ensaios anteriores, neste iremos iniciar com  uma **Simulação de Monte Carlo**.
+Desta forma, nós teremos total controle do processo gerador dos nossos dados e podemos
+analisar com maior precisão como as diversas tecnicas performam diante da presença
+de quebra-estrutural. 
+
+Uma vez consolidado nosso ensaio acerca dos métodos de identificação, iremos aplicá-los
+a nossa série de Preço do Barril do Petróleo Bruto - Brent Europa. 
+
+
+## Instalação e Imports
+
+```{r install packages, warning=FALSE, message= FALSE}
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("janitor")
+#install.packages('seasonal')
+#install.packages('gridExtra')
+#install.packages('imputeTS')
+#install.packages('tsoutliers')
+#install.packages('forecast')
+#install.packages('MASS')
+#install.packages('tseries')
+#install.packages("urca")
+#install.packages("strucchange")
+#install.packages("lubridate")
+```
+
+
+```{r import packages, warning=FALSE, message= FALSE}
+# Pacote para análise de dado
+library(tidyverse) 
+
+# Pacotes para limpeza e sumarização de dados
+library(skimr)
+library(janitor)
+library(imputeTS)
+library(tsoutliers)
+
+# Dataviz
+library(ggplot2)
+library(scales)
+library(gridExtra)
+
+# Manipulação de datas
+library(lubridate)
+
+# Série Temporal
+library(seasonal)
+library(stats)
+library(forecast) 
+library(MASS) # BoxCox
+
+# Testes de estacionariedade
+library(tseries) # ADF, PP e KPSS
+library(urca) # ERS - Zivot Andrews
+
+
+# Quebras estruturais
+library(strucchange) # Teste de Chow
+source("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Markdown/quebra-estrutural-lee-stra.R") # Teste Lee Stra
+
+
+# Configuração número científico
+options(scipen = 999)
+```
+
+
+## Simulação de Monte Carlo
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+# Modelo provisório antes da simulação de Monte Carlo
+set.seed(456)
+x_1 = arima.sim(model = list(ar=0.90, order(1,0,0)), n=200, mean = 1, sd = 1)
+x_2 = arima.sim(model = list(ar=0.94, order(1,0,0)), n=100, mean = 1, sd = 2) # Primeira quebra t = 200
+x_3 = arima.sim(model = list(ar=0.98, order(1,0,0)), n=150, mean = 1, sd = 3) # Segunda quebra t = 300
+
+y = c(x_1,x_2, x_3)
+
+
+plot.ts(y) + title("Processo AR(1) com 2 quebras estruturais")
+
+# Criando DF com y em log e y defasado
+df = data.frame(y) %>% 
+  mutate(y_log = log(y),
+         y_lag = lag(y,1),
+         y_lag_log = lag(y_log,1))
+```
+
+
+O processo AR(1) simulado, onde todos os $\phi$ obdecem
+a condição de estacionariedade, pode ser formalmente descrito por:
+
+$$
+y_{t} = \alpha + \beta t + \phi y_{t-1} + \epsilon_{t}
+$$
+
+onde, $\beta$ é igual a zero, ou seja, a série não possui tendência. Mais especificamente,
+temos:
+
+$$
+\left\{\begin{matrix}
+y_{t} = 1 + 0.7y_{t-1} + \epsilon_{t}, \; para \; t < 200
+\\ 
+y_{t} = 2 + 0.8y_{t-1} + \epsilon_{t}, \; para \; 200 \leq t < 300
+\\
+y_{t} = 3 + 0.9y_{t-1} + \epsilon_{t}, \; para \; 300 \leq t \leq 450
+
+\end{matrix}\right.
+$$
+
+É perceptível que todos os processos são estacionários dado que $\phi < 1$ para todos os casos.
+Vamos ver como os teste de estacionariedade performam diante da presença das quebras estruturais.
+
+
+## Estacionariedade
+
+### ADF, PP, KPSS
+
+```{r, warning=FALSE}
+df %>% 
+  summarize(ADF = adf.test(y)$p.value,
+            PP = pp.test(y)$p.value,
+            KPSS = kpss.test(y)$p.value) %>% 
+  gather("Testes", "p-valor")
+```
+
+Podemos verificar que para os teste ADF e PP, cuja a hipótese nula é presença de raiz
+unitária, não podemos rejeitar H0. Por outro lado, o teste KPSS, cuja a hipótese nula 
+é ausência de raiz unitária, também falha em rejeitar H0. Todos os testes sugerem
+**não estacionariedade** da série. 
+
+Veja, nós criamos a série a partir de um processo AR(1) e sabemos que ela é estacionária,
+porque o estes falham em perceber isso? **Por causa das quebras-estruturais!**.
+
+Neste exemplo é fácil perceber que os teste estão falhando, mas com dados reais, onde não
+sabemos o processo gerador da série, no mínimo, haverá dúvidas sob a confiabilidade dos testes.
+
+Perceba que isto **não significa** que devemos abandoná-los, pois se todos convergirem
+para um ausência de raíz unitária, poderíamos aceitar a hipótese de estacionariedade.
+
+A pergunta natural é: **como identificar quebras estruturais?**
+
+Iremos apresentar algumas possíveis técnicas para identificação de quebra-estruturais,
+cada qual com sua limitação e como as técnicas subsequentes "melhoram" o processo em relação
+a anterior.
+
+
+## Indentificando quebras-estruturais
+
+### Teste de Chow
+
+O teste de Chow é limitado a indentificação de apenas **uma quebra-estrural** e requer que o pesquisador saiba seu **exato momento**. O procedimento adotado é o ajuste de um modelo ARMA(p,q) para o périodo
+pré e pós quebra estrutural.
+
+* Hipótese nula: ausência de quebra estrutural
+
+
+Nossa série simulada possui 2 quebras, então iremos recorta-lá para que nos reste apenas 
+uma quebra.  
+
+```{r}
+# Lembre-se que perdemos 1 observação dado o AR(1)
+df_1_quebra = df %>% slice(1:300)
+  
+# Teste de chow - para o de quebra 200
+sctest(df_1_quebra$y ~ df_1_quebra$y_lag, type = "Chow", point = 200)
+
+```
+
+A estatística de teste indica que podemos rejeitar a hipótese nula e que há evidências
+de uma quebra-estrutural quando t = 200. Este valor é conveniente porque nós sabemos
+exatamente onde a quebra-estrutural está localizada, veja o que acontece quando tentamos
+performar o mesmo teste para outros pontos.
+
+
+```{r}
+# Teste de chow - para o de quebra 100
+sctest(df_1_quebra$y ~ df_1_quebra$y_lag, type = "Chow", point = 100)
+
+```
+
+```{r}
+# Teste de chow - para o de quebra 230
+sctest(df_1_quebra$y ~ df_1_quebra$y_lag, type = "Chow", point = 230)
+
+```
+
+Para ambos os casos não foi possível rejeitar a hipótese nula, indicando que não há
+evidência de uma quebra estrutural para t=100 e t=230. Com dados reais, muitas vezes
+algum tipo de literatura irá lhe apontar possíveis pontos de quebras, o melhor que você
+pode fazer com o teste Chow é verificar se de fato aquele ponto é uma quebra-estrutural.
+
+Por outro lado, você pode ser engenhoso e decidir testar ponto a ponto a existência de uma
+quebra estrutural - isto é desnecessário. Antes de prosseguir nossa análise, vamos ver
+como o teste de Chow se comporta na série com 2 quebras estruturais
+
+```{r}
+sctest(df$y ~ df$y_lag, type = "Chow", point = 200)
+```
+
+```{r}
+sctest(df$y ~ df$y_lag, type = "Chow", point = 300)
+
+```
+
+Para ambos os casos, onde nós sabemos que há quebra-estrutural, o teste falha
+em rejeitar a hipótese nula, sugerindo ausência de uma quebra. Diante disto, reforçamos
+mais uma vez que **o Teste de Chow só é indicado quando há apenas uma quebra estrutural**.
+
+
+### Teste de Zivot Andrews
+
+Diferente do teste de Chow, não é necessário saber o momento da quebra estrutural para
+utilziar o teste de Zivot Andrews. Porém, similarmente ao seu antecessor, ele é capaz
+de identificar apenas uma quebra estrutural, na presença de mais de uma, a de maior
+magnitude será identificada. Vejamos:
+
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+za_1 = ur.za(df_1_quebra$y, model = "both", lag = 1)
+plot(za_1)
+summary(za_1)
+```
+
+Perceba que performamos o teste tanto
+para o intercepto quanto para a tendência - não há componente tendencial
+no processo gerador da nossa série.
+Veja que a estatística de teste rejeita raiz unitária em detrimento de uma possível
+quebra estrutural quando t = 200.  Nós sabemos que a quebra estrutural é 
+precisamente nesta posição, e o teste é sensível a esta mudança abrupta.
+
+Um exercício interessante é replicar esse mesmo exercício para a série com duas
+quebras estruturais.
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+za_2 = ur.za(df$y_log, model = "both", lag = 1)
+plot(za_2)
+summary(za_2)
+```
+
+
+O teste novamente é capaz rejeitar a hipótese de ausência de raiz unitária
+em detrimento de uma quebra estrutural quando t = 300. Porém, perceba
+que para este caso há duas quebras - t=200 e t=300, o teste falha em captar a primeira quebra.
+Na presença de duas quebras, o teste identificará a de maior magnitude.
+Por isto, apesar de eficiente, o teste é inapropriado na presença de mais de uma quebra estrutural.
+Novamente reforçamos que tratando-se de dados reais, nós **não sabemos o processo gerador** deles, por isso
+é necessário ter muita cautela na identificação das quebras.
+
+
+### Lee e Strazicich
+
+O teste de Lee e Strazicich detecta raiz unitária com quebra estrutural, permitindo
+a computação de até 2 quebras. É possível rodar o modelo com mais 2 quebras, porém
+as estatística de teste serão a mesma que para 2.
+
+Primeiro nós iremos testar o modelo para apenas mudanças em nível, em um modelo "crash",
+tentando capturar até duas quebras estruturais, com o método de geral para específico com 1 lag e 
+com intervalo mínimo para quebras de 0.1. Iremos utilizar a série em log para estabilizar
+a variância.
+
+* Hipótese nula: presença de raiz unitária
+
+
+```{r}
+ur.ls(y = df$y_log, model = "crash", breaks = 2, lags = 1, method = "GTOS", pn = 0.1, print.results = "print")
+```
+
+É possível perceber que o teste rejeita a hipótese nula e com isso temos evidências
+suficientes para aceitar estacionariedade. Porém, **o teste é capaz de identificar 2 quebras estruturais quando t = 200 e t = 300**, que são precisamente as quebras definidas no processo gerador da série.
+
+
+Replicando o modeo permitindo simultaneamente mudanças no nível e na tendência.
+
+
+```{r}
+ur.ls(y = df$y_log, model = "break", breaks = 2, lags = 1, method = "GTOS", pn = 0.1, print.results = "print")
+```
+
+Novamente o teste é capaz de rejeitar a hipótese nula de presença de raíz unitária, porém,
+desta vez, podemos perceber que o **teste falha em detectar corretamente os momentos das quebras(t=74 e t=312)**. 
+Isto deve-se ao fato de não existir componente tendencial no processo
+gerador da nossa série. É necessário atenção quanto a correta calibração do teste.
+
+
+## Aplicando a série do Barril de Petróleo
+
+### Leitura dos dados
+```{r}
+# Data loading 
+petrol = read.csv("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Dados/MCOILBRENTEU.csv") %>% 
+  as_tibble()
+
+# Ajuste do nome das colunas para minúsculo
+petrol = petrol %>% 
+  rename_with(tolower)
+
+
+# Criando serie logaritmica
+petrol = petrol %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate(log_petrol = log(mcoilbrenteu))
+
+# Visualizando os dados
+petrol
+```
+
+### Graficamente
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+petrol %>% 
+  pivot_longer(-c(date)) %>% 
+  ggplot(aes(x = date, y = value, color = name, group = name)) +
+  geom_line(size = 1) +
+  labs(y = 'Preço do Barril (U$)', 
+       x = 'Data',
+       color = 'Séries',
+       title = 'Preço do Barril Bruto - Brent Europa (1987 a 2022)') +
+  facet_wrap(~name, nrow = 2, scales = "free_y") + 
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1))
+```
+
+Como não sabemos exatamente o momento da quebra, iremos começar nossa ensaio com 
+teste de Zivot Andrews.
+
+### Zivot Andrews
+
+```{r}
+za_petrol = ur.za(petrol$log_petrol, model = "intercept", lag = 1)
+plot(za_petrol)
+summary(za_petrol)
+```
+Graficamente
+
+```{r}
+petrol %>% 
+  ggplot(aes(x = date, y = mcoilbrenteu)) +
+  geom_line() +
+  geom_vline(xintercept = (petrol %>% slice(326))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  theme_minimal()
+```
+
+### Lee e Stracich
+
+```{r}
+ur.ls(y = petrol$log_petrol, model = "crash", breaks = 2, lags = 1, method = "GTOS", pn = 0.1, print.results = "print")
+```
+
+
+Graficamente
+
+```{r}
+petrol %>% 
+  ggplot(aes(x = date, y = log_petrol)) +
+  geom_line() +
+  geom_vline(xintercept = (petrol %>% slice(209))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  geom_vline(xintercept = (petrol %>% slice(332))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  theme_minimal()
+```
+
+```{r}
+ur.ls(y = petrol$log_petrol, model = "break", breaks = 2, lags = 1, method = "GTOS", pn = 0.1, print.results = "print")
+```
+
+
+Graficamente
+
+```{r}
+petrol %>% 
+  ggplot(aes(x = date, y = log_petrol)) +
+  geom_line() +
+  geom_vline(xintercept = (petrol %>% slice(144))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  geom_vline(xintercept = (petrol %>% slice(329))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  theme_minimal()
+```
+
+
+
+## Referências
+
+### Teste de Chow
+[R-Bloggers](https://www.r-bloggers.com/2021/11/how-to-do-chow-test-in-r/#:~:text=The%20Chow%20test%20is%20used,structural%20break%20at%20some%20point.)
