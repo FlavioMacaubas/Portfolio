@@ -11,7 +11,7 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
 
   ### [Modelo SARIMA](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/SARIMA.Rmd)
   
-   * [Explicação SARIMA]([https://www.linkedin.com/pulse/previs%C3%A3o-com-modelo-arima-fl%C3%A1vio-maca%C3%BAbas/](https://www.linkedin.com/pulse/seasonal-arima-sarima-fl%C3%A1vio-maca%C3%BAbas/)
+   * [Explicação SARIMA](https://www.linkedin.com/pulse/seasonal-arima-sarima-fl%C3%A1vio-maca%C3%BAbas/)
    
   ### [Ciclo de Negócios](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Business-Cycle.Rmd)
   ### [Quebra-Estrutural](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Quebra-Estrutural.Rmd)
@@ -42,4 +42,6 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
   ### [Análise da empresa OI](https://github.com/FlavioMacaubas/Portfolio/blob/master/analise-sentimento-empresa-oi/sentimento_oi.ipynb)
   ### [Análise do artesano João Pessoa](https://github.com/FlavioMacaubas/Portfolio/tree/master/artesanato-pb)
   ### [Monitoramento Covid-19](https://github.com/FlavioMacaubas/Portfolio/tree/master/Covid-19)
+  
+  * [Dashboard Covid](https://paraiba-covid-19.herokuapp.com/)
   
