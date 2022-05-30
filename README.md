@@ -21,15 +21,15 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
   ### [DataFrames](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-df)
   ### [Machine Learning](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml)
   
-   * [Regressão Linear](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/linear-regression)
+   * [Regressão Linear - Determinando tripulação de navios](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/linear-regression)
     
-   * [Regressão Logística](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/logistic-regression)
+   * [Regressão Logística - Identificando clientes com mais risco de Churn](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/logistic-regression)
     
-   * [Métodos de Árvore](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/tree-methods)
+   * [Métodos de Árvore - Produto químico acelerando vencimento de rações](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/tree-methods)
     
-   * [K-Means](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/k-means)
+   * [K-Means - Ataque de Hackers](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/k-means)
     
-   * [Sistema de Recomendação](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/recomendation-system)
+   * [Sistema de Recomendação - Sistema de recomendações de filmes](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/recomendation-system)
   
 ## Análise Impacto
 
