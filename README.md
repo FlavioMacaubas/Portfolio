@@ -23,7 +23,7 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
   
    * [Regressão Linear - Determinando tripulação de navios](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/linear-regression)
     
-   * [Regressão Logística - Identificando clientes com mais risco de Churn](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/logistic-regression)
+   * [Regressão Logística - Alocando gerentes para evitar churn](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/logistic-regression)
     
    * [Métodos de Árvore - Produto químico acelerando vencimento de rações](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-ml/tree-methods)
     
