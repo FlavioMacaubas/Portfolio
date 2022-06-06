@@ -14,7 +14,7 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
    * [Explicação SARIMA](https://www.linkedin.com/pulse/seasonal-arima-sarima-fl%C3%A1vio-maca%C3%BAbas/)
    
   ### [Ciclo de Negócios](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Business-Cycle.Rmd)
-  ### [Quebra-Estrutural](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Quebra-Estrutural.Rmd)
+  ### [Quebra-Estrutural](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/SERIE-QUEBRA.Rmd)
   
 ## Pyspark
 
