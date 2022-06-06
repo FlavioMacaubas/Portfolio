@@ -16,6 +16,8 @@ Aqui há um resumo dos principais projetos públicos que já desenvolvi para ape
   ### [Ciclo de Negócios](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/Business-Cycle.Rmd)
   ### [Quebra-Estrutural](https://github.com/FlavioMacaubas/Portfolio/blob/master/series-temporal/SERIE-QUEBRA.Rmd)
   
+    * [Explicação Quebras-Estruturais](https://www.linkedin.com/pulse/quebras-estruturais-e-estacionariedade-fl%25C3%25A1vio-maca%25C3%25BAbas/?trackingId=Zc5DE02A9%2BJr3d03HxqMQw%3D%3D)
+  
 ## Pyspark
 
   ### [DataFrames](https://github.com/FlavioMacaubas/Portfolio/tree/master/pyspark/spark-df)
