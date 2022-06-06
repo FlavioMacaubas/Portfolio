@@ -1,0 +1,391 @@
+---
+title: "Quebras-estruturais e estacionariedade"
+author: "Flávio Macaúbas Torres Filho e José Carlos Claudino Filho"
+date: "30/05/2022"
+output: html_document
+---
+
+# Quebra Estrutural
+
+## Principais Conclusões
+
+* Os teste ADF, PP, KPPS e ERS falham rejeitar a presença de raiz unitária na série;
+
+* O teste Chow - perfomado duas vezes - sugere existência de quebras-estruturais em abril de 1999 e setembro de 2014;
+
+* O teste QLR apesar de identificar quebra-estrutural é estatisticamente insignificante;
+
+* O teste de Zivot e Andrews rejeita a presença de raiz unitária em detrimento uma quebra-estrutural em 2014;
+
+* O teste Lee e Strazivich aceita um processo estacionário com duas quebras-estruturais em 1999 e 2014.
+
+-------
+
+Uma das hipóteses centrais da metodologia Box-Jenkins é que a estrutura do
+processo gerador dos dados não muda. Na presença de quebras-estruturais, esta hipótese não é verdadeira.
+
+Quebras-estruturais podem acontecer devido a ocorrência de variados eventos: choques de oferta, mudanças de políticas, guerras, etc. Na presença de quebra-estrutural temos:
+
+* O teste de estacionariedade tradicionais perdem eficácia;
+
+* O poder do teste tende assintoticamente para zero.
+
+Existem 3 tipos de testes de quebras:
+
+* Identificação da existência;
+
+* Estimação da data e/ou momento da quebra;
+
+* Examinar a presença de raíz unitária com quebra.
+
+
+Esta falta de consistência nos parâmetros da série acarreta em falhas de previsão. Idealmente, nós queremos identificar se nossa série possui quebra estrutural para que possamos aplicar os testes adequados e modelos adequados - os modelos Threshold são uma boa opção quando há presença de quebra(s) estrutural(ais).
+
+
+## Instalação e Imports
+
+```{r install packages, warning=FALSE, message= FALSE}
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("janitor")
+#install.packages('seasonal')
+#install.packages('gridExtra')
+#install.packages('imputeTS')
+#install.packages('tsoutliers')
+#install.packages('forecast')
+#install.packages('MASS')
+#install.packages('tseries')
+#install.packages("urca")
+#install.packages("strucchange")
+#install.packages("lubridate")
+```
+
+
+```{r import packages, warning=FALSE, message= FALSE}
+# Pacote para análise de dado
+library(tidyverse) 
+
+# Pacotes para limpeza e sumarização de dados
+library(skimr)
+library(janitor)
+library(imputeTS)
+library(tsoutliers)
+
+# Dataviz
+library(ggplot2)
+library(scales)
+library(gridExtra)
+
+# Manipulação de datas
+library(lubridate)
+
+# Série Temporal
+library(seasonal)
+library(stats)
+library(forecast) 
+library(MASS) # BoxCox
+
+# Testes de estacionariedade
+library(tseries) # ADF, PP e KPSS
+library(urca) # ERS - Zivot Andrews
+
+
+# Quebras estruturais
+library(strucchange) # Teste de Chow
+source("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Markdown/quebra-estrutural-lee-stra.R") # Teste Lee Stra
+
+
+# Configuração número científico
+options(scipen = 999)
+```
+
+
+### Leitura dos dados
+```{r}
+# Data loading 
+petrol = read.csv("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Dados/MCOILBRENTEU.csv") %>% 
+  as_tibble()
+
+# Ajuste do nome das colunas para minúsculo
+petrol = petrol %>% 
+  rename_with(tolower)
+
+
+# Criando serie logaritmica e os respectivos lags
+petrol = petrol %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate(log_petrol = log(mcoilbrenteu),
+         petrol_lag = lag(mcoilbrenteu,1),
+         petrol_lag_log = lag(log_petrol,1))
+
+# Visualizando os dados
+petrol
+```
+
+## Transformando em série
+
+```{r}
+serie_petrol = ts(start = c(1987,05,01), 
+                    petrol$log_petrol,
+                    freq = 12) 
+
+head(serie_petrol, 20)
+```
+## Graficamente
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+autoplot(serie_petrol) + 
+  labs( y = 'Preço do Barril (U$)', 
+        x = 'Data',
+        title = 'Preço mensal do barril do Petróleo Bruto (Brent) Europa - 1987 até 2022') +
+  theme_minimal()
+
+```
+
+A princípio iremos recaptular os testes de estacionariedade do nosso modelo para verificar
+a ausência de linearidade.
+
+## Estacionariedade da série
+
+
+```{r}
+petrol  %>% 
+  summarize(ADF = adf.test(mcoilbrenteu)$p.value,
+            PP = pp.test(mcoilbrenteu)$p.value,
+            KPSS = kpss.test(mcoilbrenteu)$p.value) %>% 
+  gather("Testes", "p-valor")
+```
+
+Podemos verificar que para os teste ADF e PP, cuja a hipótese nula é presença de raiz
+unitária, não podemos rejeitar H0. Por outro lado, o teste KPSS, cuja a hipótese nula 
+é ausência de raiz unitária, também falha em rejeitar H0. Todos os testes sugerem
+**não estacionariedade** da série. 
+
+
+
+Para complementar a análise de estacionaridade, realizaremoso teste ERS:
+
+### Elliot, Rothenberg e Stock - ERS
+
+```{r}
+summary(ur.ers(petrol$mcoilbrenteu))
+```
+
+A hipótese nula do teste sugere presença de raíz unitária, como o valor calculado
+-0.6308 está dentro de todos os níveis de significância, **não podemos rejeitar a 
+hipótese nula** de presença de raíz unitária na série. Logo, o teste ERS,
+indica a **não estacionariedade** da série.
+
+
+Desta forma, progredimos nossa análise para tentar captar estacionariedade na
+presença de quebra-estrutural.
+
+## Identificando quebras-estruturais
+
+### Teste de Chow
+
+O teste de Chow é limitado a indentificação de apenas **uma quebra-estrural** e requer que o pesquisador saiba seu **exato momento**. O procedimento adotado é o ajuste de um modelo ARMA(p,q) para o périodo
+pré e pós quebra estrutural.
+
+* Hipótese nula: ausência de quebra estrutural
+
+
+Nossa série possui possivelmente mais de uma quebra, como uma das limitações do teste
+de Chow é saber o momento exato da queda - iremos definir *ad hoc* o ponto. 
+
+Note que o teste de Chow é apenas o início da discussão de linearidade da série na presença
+de quebra-estrutural. Normalmente, recorre-se a literatura para tentar definir o momento da queda
+e posteriormente utilizamos o teste de Chow para corroborar a hipótese inicial.
+
+Como não sabemos o exato momento da quebra, iremos testar a hipótese de uma quebra em meados
+do ano 2000, período em que as commodities tiveram consideravelmente aumento em decorrência,
+principalmente, do crescimento da China.
+
+```{r}
+petrol %>% slice(144)
+```
+
+
+* Momento da quebra: 01 de Abril de 1999 
+
+```{r}
+sctest(petrol$log_petrol ~ petrol$petrol_lag_log, type = "Chow", point = 144)
+
+```
+
+A estatística de teste indica que podemos rejeitar a hipótese nula e que há evidências
+de uma quebra-estrutural quando t = 144 (01 de abril de 1999). Em outras palavras,
+nós podemos rejeitar estacionariedade em decorrência de uma quebra-estrutural quando
+t = 144. 
+
+Porém, o teste de Chow não é recomendado quando há a presença de mais de uma
+quebra-estrutural. Podemos testar novamente o teste Chow mudando o ponto da quebra.
+
+```{r}
+petrol %>% slice(329)
+```
+
+* Momento da quebra: 01 de Setembro de 2014
+
+O preço do petróleo começou apresentar considerável queda a partir de 2014. A literatura
+aponta algumas razões para este acontecimento, por exemplo, Arezki and Blanchard (2015)
+sugere que o choque de oferta após junho de 2014 liderados por Líbia, Iraque e EUA. Este
+fator foi acentuado dado que em novembro de 2014 a OPEP decidiu não diminuir o nível de 
+oferta de petróleo mesmo com o aumento da produção de petróleo de países não-membros da 
+organização.
+
+Testando a presença de quebra-estrutural nesse ponto:
+
+```{r}
+sctest(petrol$log_petrol ~ petrol$petrol_lag_log, type = "Chow", point = 329)
+```
+Analogamente, o teste de Chow rejeita a hipótese nula sugerindo a presença
+de uma quebra-estrutural no ponto 329 (01 de Setembro de 2014) em detrimento
+a estacionariedade. Fica evidente que o teste de Chow apenas é eficaz quando há 
+garantias de apenas **uma quebra** na série. 
+
+## Teste Quandt Likelihood Ratio (QLR)
+
+Como forma de tentar contornar a necessidade de ter escolher o momento da quebra
+do teste Chow, o teste QLR tenta escolher o melhor momento para definir a quebra 
+a partir da computação de todos os possíveis ponto de quebras a partir
+do teste de Chow. Ou seja, o maior estatística de teste dentre todas as possíveis
+pelo teste Chow será selecionada. Vejamos:
+
+```{r}
+qlr = Fstats(log_petrol ~ petrol_lag_log, data = petrol)
+breakpoints(qlr)
+```
+
+Verificando quando ocorre esta quebra:
+
+```{r}
+petrol %>% slice(141)
+```
+
+O teste sugere uma quebra estrutural em janeiro de 1999, verificando a estatística de teste:
+
+```{r}
+sctest(qlr, type = 'supF')
+```
+Veja que para este caso o teste falha em rejeitar a hipótese nula no ponto 141, indicando
+a ausência de quebra-estrutural. Podemos melhorar nosso entendimento a partir do auxílio
+gráfico:
+
+```{r}
+plot(qlr)
+```
+
+Este gráfico pode ser melhor compreendido a partir da da soma cumulativa dos resíduos de forma identificar um momento de quebra:
+
+```{r}
+cusum <- efp(log_petrol ~ petrol_lag_log, data = petrol, type = "OLS-CUSUM")
+plot(cusum)
+```
+
+Os resultados continuam sugerindo que não há presença de quebra-estrutural, o que provavelmente está
+incorreto. O problema dos testes supracitados é sua incapacidade de realizar conjuntamente o teste
+de estacionariedade. Em outras palavras, é possível existir quebra-estrutural e mesmo
+assim a série ser estacionária.
+
+
+## Estacionariedade na presença de quebra-estrutural
+
+### Teste de Zivot Andrews
+
+Diferente do teste de Chow, não é necessário saber o momento da quebra estrutural para
+utilziar o teste de Zivot Andrews. Porém, similarmente ao seu antecessor, ele é capaz
+de identificar apenas uma quebra estrutural, na presença de mais de uma, a de maior
+magnitude será identificada. Vejamos:
+
+
+* Hipótese nula: presença de raiz unitária com drift
+* Hipótese alternativa: processo estacionário com uma quebra-estrutural de nível
+
+
+```{r, echo=TRUE, fig.height=5, fig.width=8}
+za_1 = ur.za(petrol$log_petrol, model = "intercept", lag = 1)
+plot(za_1)
+summary(za_1)
+```
+
+Nos performamos o teste para intercepto em que a **falha-se em rejeitar a hipótese de raiz unitária em detrimento de uma quebra-estrutural no ponto 326** a 10% de significância. Note que emerge uma discussão 
+interessante deste resultado, antes o teste Chow tinha corroborado uma possível quebra
+no ponto 329 - nas proximidades do ponto do teste de Zivot Andrews - porém nós também
+havíamos verificado a presença de uma possível quebra no ponto 144, ao qual foi preterido
+no teste de ZA. 
+
+Veja, esta é exatamente uma das limitações do teste de ZA, **dado a presença de mais de uma quebra estrutural, aquela de maior magnitude (variância) será sempre preferida**. Ou seja, apesar de encontrarmos mais evidências de que há uma 
+quebra estrutural em 2014, ainda continuamos com as limitações da quantidade de quebra.
+
+Para superarmos essa limitações, iremos introduzir o teste de Lee e Strazicich
+
+### Lee e Strazicich
+
+O teste de Lee e Strazicich detecta raiz unitária com quebra estrutural, permitindo
+a computação de até 2 quebras. É possível rodar o modelo com mais 2 quebras, porém
+as estatística de teste serão a mesma que para 2.
+
+Primeiro nós iremos testar o modelo para apenas mudanças em nível e de tendência, em um modelo "break",
+tentando capturar até duas quebras estruturais, com o método de geral para específico com 1 lag e 
+com intervalo mínimo para quebras de 0.1. Iremos utilizar a série em log para estabilizar
+a variância.
+
+* Hipótese nula: presença de raiz unitária com 2 quebras estruturais
+* Hipótese alternativa: processo estacionário com 2 mudanças de nível
+
+```{r}
+ur.ls(y = petrol$log_petrol, model = "break", breaks = 2, lags = 1, method = "GTOS", pn = 0.1, print.results = "print")
+```
+
+Temos que a estatística t = -6.23 indica a rejeição da hipótese nula de presença de raiz unitária - dado que para o modelo break a temos os seguintes valores críticos (1%, 5%, 10%) = (-5,823, -5,286, - 4,989). Consequentemente, temos presença de quebras em 1999 e 2014.
+
+```{r}
+petrol %>% 
+  ggplot(aes(x = date, y = log_petrol)) +
+  geom_line() +
+  geom_vline(xintercept = (petrol %>% slice(144))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  geom_vline(xintercept = (petrol %>% slice(329))$date, 
+             color = 'red',
+             linetype = 'dashed') +
+  theme_minimal()
+```
+
+
+
+## Considerações finais
+
+Os teste tradicionais (ADF, PP, KPSS) rejeitam a hipótese de estacionariedade
+da série, fato corroborado pelo teste ERS. Em decorrência, aplicamos os teste
+de estacionariedade na presença de quebras-estruturais. 
+
+O teste de Chow permite o teste de apenas uma quebra-estrutural.Foi possível o teste rejeita a hipótese nula quando avaliado nos pontos 144 e 329 - duas etapas distintas. Em outras palavras, falha-se em rejeitar a ausência
+de quebra-estrutural, porém como nós tivemos o mesmo resultados para dois pontos diferentes,
+este é um indicativo de que há mais de uma quebra na série e o teste Chow perde poder diante
+disto. 
+
+Diante disto, performamos o teste QLR de forma a superar as limitações da definição do momento
+de quebra pelo pesquisador. Apesar do teste captar uma quebra em 1999, este valor não foi
+estatisticamente significativo.
+
+Por sua vez, o teste de Zivot Andres falha em rejeitar a hipótese nula,
+identifica uma quebra-estrutural no ponto 326, corroborando
+os resultados do teste Chow de presença de quebra-estrutural no ano de 2014. Porém, o teste prefere
+a quebra de maior magnitude (variância), limitando também o poder do teste quando há mais de uma quebra
+na série.
+
+Por fim, o teste de Lee e Stravinch rejeita a hipótese nula e aceita um processo estacionário
+com 2 mudanças de nível. Indicando que há estacionariedade apesar da presença das quebras-estruturais
+nos períodos 144 e 329.
+
+## Referências
+
+Arezki, R, and O Blanchard (2015), “The 2014 Oil Price Slump: Seven Key Questions,” VoxEU.org, 13 January.
+
+Chow, Gregory C. (1960). "Tests of Equality Between Sets of Coefficients in Two Linear Regressions". Econometrica. 28 (3): 591–605. doi:10.2307/1910133. JSTOR 1910133. Archived from the original (PDF) on 2019-12-28.
+
+Lee, Junsoo, and Mark C. Strazicich. "Minimum Lagrange multiplier unit root test with two structural breaks." Review of economics and statistics 85.4 (2003): 1082-1089.
+
+ZIVOT, Eric; ANDREWS, Donald W. K. **Further evidence on the great crash, the oil-price shock, and the unit-root hypothesis**. Journal of business & economic statistics, v. 20, n. 1, p. 25-44, 2002.
