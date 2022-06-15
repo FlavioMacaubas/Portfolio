@@ -1,0 +1,655 @@
+---
+title: "TAR-FAMILY"
+author: "Flávio Macaúbas Torres Filho e José Carlos Claudino Filho"
+date: "31/05/2022"
+output: html_document
+---
+## Principais Conclusões
+
+* Os testes ADF, PP, KPSS e ERS falham em rejeitar a presença de raiz unitária na série;
+
+* Os testes Teraesvirta e White Neural falham em rejeitar a hipótese nula de linearidade na média;
+
+* Os testes Kennan, McLeod-Li e Tsay sugerem não-linearidade da série;
+
+* Teste de Máximo Verossimilhança rejeita a hipótese nula sugerindo que a série segue algum processo TAR;
+
+* Previsão para modelo SETAR - 2 regimes: U$ 129.06
+
+* Previsão para modelo SETAR - 3 regimes: U$ 85,44
+
+* Previsão para o modelo MTAR - 3 regimes: U$ 101,33 (melhor previsão)
+
+* Previsão para modelo ESTAR - 3 regimes: U$ 138,00
+
+* Previsão para modelo LSTAR - 2 regimes: U$ 128,72
+
+* Todas as previsões captam uma queda dos preços no futuro.
+
+## Melhorias
+
+* Revisitar o problema utilizando a metodologia de Markov-Switching e Markov-Switching Estado-Espaço.
+
+# Threshold AR - TAR
+
+
+Existem duas possíveis quebras em uma série: média ou variância. Neste ensaio, estamos interessados em série com diferentes médias e como utilizar os modelas da famílias TAR.
+
+Para o caso de séries com quebra na variância, os modelos recomendados são da família ARCH, direcionados para modelar problemas de heterocedasticidade.
+
+
+> Em uma longa viagem de automóvel para um novo local, você pode seguir um atlas de estrada [...] Para a maioria das viagens, essa aproximação linear é extremamente útil. Para outros tipos de viagens, a suposição de lieanridade é claramente inadequada. Seria desastroso para a NASA usar um mapa plano da Terra para planejar a trajetória de um lançamento de foguete. [Enders, 2008]
+
+
+**Quebra na média**
+
+Para melhor entendermos possíveis quebras na média  de uma série, vamos partir
+de um processo estocástico em tempo contínuo definido como *Brownian Bridge*, dado por:
+
+$$  B(\frac{t}{T}) = \frac{1}{\sqrt{T}}[\sum^{t}_{s = 1}(\epsilon_{s} - \bar{\epsilon})]$$
+
+Começando de t = 0 e terminando em t = 1, onde
+$\epsilon$ é i.i.d mas não necessariamente normal,
+e $\bar{\epsilon}$ é a média do conjunto completo de T observações.
+
+Vamos supor que, em vez de uma média fixa, haja uma na parte inicial da amostra $(\bar{X_{1}})$ e outra média maior $(\bar{X_{2}})$ para outra amostra de dados. Assim, ao subtrairmos $(\bar{X_{2}})$ da amostra completa teremos que os valores inicias irão assumir valores negativos e os demais tendem a voltar a zero.
+
+![Besarria (2022)](C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Imagens/TAR-FAMILY/bb.png)
+
+Neste caso, queremos verificar as seguintes hipóteses:
+
+$$
+\left\{
+\begin{matrix}
+H_{0} \;\;\;\; \bar{X_{1}} = \bar{X_{2}}
+\\ 
+H_{1} \;\;\;\; \bar{X_{1}} \neq \bar{X_{2}}
+\end{matrix}
+\right.
+$$
+Para o caso da Brownian Bridge, rejeitamos a hipótese nula de médias iguais. Se verificarmos essa hipótese, os modelos da família TAR são os mais adequados para lidar com o problema. 
+
+## Processos não lineares
+
+O sucesso dos modelos ARMA Gaussianos, deve-se:
+
+* Simplicidade: as equações às diferenças finitas são fáceis de tratar;
+
+* O modelo ARMA Gaussiano é compeltamente caracterizado pela média, variância e pelas autocorrelações;
+
+* A teoria está completamente desenvolvida: todas as principais questões relacionadas com a estimação, inferência e previsão estão resolvidas;
+
+* Apesar da simplicidade são úteis na análise de previsão de um grande número de séries econômicas.
+
+Todavia, os modelos não são apropriados quando:
+
+* **Os dados exibem súbitas alterações em períodos irregulares;**
+
+* **Não são apropriados para dados que exibam forte assimetria ou curtose.**
+
+## O que são modelos não lineares
+
+Considere um seguinte modelo:
+
+$$
+y_{t} = \mu_{t} + \epsilon_{t} \; / \; \epsilon_{t} = \sigma_{t}u_{t} 
+$$
+Em que, 
+
+$\epsilon_{t}$ é um ruído branco;
+
+$\mu_{t} = g(y_{t-1}, \dots, y_{t-p} ; \epsilon_{t-1}, \dots , \epsilon_{t-q})$ é a média condicional de $y_{t}$;
+
+$\sigma^{2}_{t} = h(y_{t-1}, \dots, y_{t-\tilde{p}}; \epsilon_{t-1}, \dots , \epsilon_{t-\tilde{q}}) > 0$
+é a variância condicional de $y_{t}$.
+
+Naturalmente, podemos concluir que:
+
+* A série será não linear na média se g é uma função não linear de seus argumentos.
+
+* A série senão linear na variância se $\sigma_{t}$ é não constante ao longo do tempo.
+
+
+## Apresentando o modelo TAR (Threshold autoregressive)
+
+$$
+
+y_{t} = \left\{
+\begin{matrix}
+\phi_{10} + \phi_{11}y_{t-1} + u_{t}, \; se \; y_{t-d} < \gamma
+\\ 
+\phi_{20} + \phi_{21}y_{t-1} + u_{t}, \; se \; y_{t-d} > \gamma
+\end{matrix}
+\right.
+$$
+
+Neste caso, temos dois regimes, dependendo se $y_{t-d}$ é maior ou menor que o limiar $\gamma$.
+
+**Modelos de quebras estruturais podem ser incluídos nessa classe de modelos e um dos objetivos é estimar o ponto de mudança do regime**
+
+Podemos generalizar este modelo para o caso de múltiplos regimes, sendo formalmente descrito por:
+
+$$
+
+y_{t} = \left\{
+\begin{matrix}
+\bar{s} + \phi_{1}(s_{t-1} - \bar{s}) + \epsilon_{t}, \; se \; s_{t-1} \geq \bar{s} + c
+\\ 
+s_{t-1}  + \epsilon_{t}, \; se \; \bar{s} - c < s_{t-1} \leq \bar{s} + c
+\\
+\bar{s} + \phi_{2}(s_{t-1} - \bar{s}) + \epsilon_{t}, \; se \; s_{t-1} \leq \bar{s} - c
+\end{matrix}
+\right.
+$$
+
+### Modelo Momentum Threshold (M-TAR)
+
+Definido por Enders e Granger (1998), este modelo é recomendando quando o ajuste é assimétrico, quando a série exiba mais momentum em uma direção do que na outra. Podendo ser definido por:
+
+
+$$
+\Delta y_{t} = \phi_{1}I_{t}y_{t-1} + \phi_{2}(1-I_{t})y_{t-1} + \epsilon_{t}
+
+\\
+
+I_{t} = \left\{
+\begin{matrix}
+1 \; se \; \Delta y_{t-1} > 0
+\\ 
+0 \; se \; \Delta y_{t-1} \leq 0
+\end{matrix}
+\right.
+$$
+
+### Modelos de transição-suave (STAR)
+
+São modelos que permitem que o parâmetro auto-regressivo mude lentamente. Considere o caso especial Non-Linear AR (NLAR), definido por:
+
+$$
+y_{t} = \alpha_{1}y_{y-1} + \beta_{1}y_{t-1}f(y_{t-1}) + \epsilon_{t}
+$$
+
+Onde f(...) é uma função contínua de suavização e o componente regressivo denotado por
+($\alpha + \beta$). Existem duas formas que um modelo STAR podem adotar:
+
+* Versão lógistica (LSTAR)
+
+* Versão exponencial (ESTAR)
+
+
+## Instalação e Imports
+
+```{r install packages, warning=FALSE, message= FALSE}
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("janitor")
+#install.packages('seasonal')
+#install.packages('gridExtra')
+#install.packages('imputeTS')
+#install.packages('tsoutliers')
+#install.packages('forecast')
+#install.packages('MASS')
+#install.packages('tseries')
+#install.packages("urca")
+#install.packages("strucchange")
+#install.packages("lubridate")
+#install.packages("nonlinearTseries")
+#install.packages("lmtest")
+#install.packages("locfit")
+#install.packages("TSA")
+#install.packages("tsDyn")
+#install.packages("TAR")
+```
+
+
+```{r import packages, warning=FALSE, message= FALSE}
+# Pacote para análise de dado
+library(tidyverse) 
+
+# Pacotes para limpeza e sumarização de dados
+library(skimr)
+library(janitor)
+library(imputeTS)
+library(tsoutliers)
+
+# Dataviz
+library(ggplot2)
+library(scales)
+library(gridExtra)
+
+# Manipulação de datas
+library(lubridate)
+
+# Série Temporal
+library(seasonal)
+library(stats)
+library(forecast) 
+library(MASS) # BoxCox
+
+# Testes de estacionariedade
+library(tseries) # ADF, PP e KPSS
+library(urca) # ERS - Zivot Andrews
+
+
+# Quebras estruturais
+library(strucchange) # Teste de Chow
+source("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Markdown/quebra-estrutural-lee-stra.R") # Teste Lee Stra
+
+# Não linearidade
+library(nonlinearTseries)
+library(lmtest)
+
+# Modelo TAR
+library(locfit)
+library(TSA)
+library(tsDyn)
+library(TAR)
+
+# Configuração número científico
+options(scipen = 999)
+```
+
+
+### Leitura dos dados
+```{r}
+# Data loading 
+petrol = read.csv("C:/Users/Macaubas/Desktop/Mestrado/Cadeiras/Series/Projeto/Series Temporal/Dados/MCOILBRENTEU.csv") %>% 
+  as_tibble()
+
+# Ajuste do nome das colunas para minúsculo
+petrol = petrol %>% 
+  rename_with(tolower)
+
+
+# Criando serie logaritmica e os respectivos lags
+petrol = petrol %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate(log_petrol = log(mcoilbrenteu),
+         petrol_lag = lag(mcoilbrenteu,1),
+         petrol_lag_log = lag(log_petrol,1))
+
+# Visualizando os dados
+petrol
+```
+
+## Transformando em série
+
+```{r}
+serie_petrol = ts(start = c(1987,05,01), 
+                    petrol$mcoilbrenteu,
+                    freq = 12) 
+
+tail(serie_petrol, 20)
+```
+
+## Testando Linearidade da série
+
+
+```{r}
+set.seed(1)
+nonlinearityTest(serie_petrol)
+```
+
+Vamos fragmentar esta análise por cada resultado:
+
+* Teraesvirta's neural network test
+    + Hipotese nula: linearidade na média
+    + p-valor: 0.052904 
+    + Conclusão: **falha** em rejeitar a hipótese nula
+    
+* White neural network test
+    + Hipotese nula: linearidade na média
+    + p-valor: 0.282523
+    + Conclusão: **falha** em rejeitar a hipótese nula
+    
+* Keenan's one-degree test for nonlinearity
+    + Hipotese nula: a série segue algum processo AR
+    + p-valor: 0.0623427
+    + Conclusão: **falha** em rejeitar a hipótese nula
+
+* McLeod-Li test
+    + Hipotese nula: a série segue algum processo ARIMA
+    + p-valor: 0
+    + Conclusão: **evidências significativas de rejeição** da hipótese nula
+    
+* Tsay's test for nonlinearity 
+    + Hipotese nula: a série segue algum processo AR
+    + p-valor: 0.000034 
+    + Conclusão: **evidências significativas de rejeição** da hipótese nula
+    
+* Likelihood ratio test for threshold nonlinearity
+    + Hipotese nula: a série segue algum processo AR
+    + Hipotese alternativa: a série segue algum processo TAR
+    + p-valor: 0.01192
+    + Conclusão: **evidências moderadas de rejeição** da hipótese nula
+    
+De todos os teste de não-linearidade
+performados, o Likelihood Ratio apresenta uma hipótese alternativa bem definida. **Indicando
+que a série segue algum processo TAR**.
+
+Por sua vez, o teste de Teraesvirta falha em rejeitar a linearidade, sugerindo que não há
+especificação LSTAR para o modelo.
+
+## Estimando modelos
+
+### SETAR
+
+O modelo setar é um caso particular do modelo TAR, onde a série é função dela mesmo defasada.
+Estamos interessados em de captar 2 regimes diferentes para nossa série.
+Em outras palavras, estamos interessados em encontrar apenas um $\gamma$ para ajustar a modelagem.
+Consequentemente, iremos utilizar o resultado do teste de Zivot-Andrews do exercício passado.
+
+A partir da quebra-estrutural quando período igual a 326 - 01/06/2014 (DD/MM/YYYY)
+
+```{r}
+petrol %>% slice(326)
+```
+
+Assim, podemos prosseguir com a estimação do regime levando em consideração o critério
+de informação AIC para seleção das ordens e delay.
+
+
+```{r}
+
+thd = 326/419*100
+
+tar_aic = function(p_max, q_max, d, thd, serie, trans = 'no', est_thd = T){
+
+  ordens = matrix(ncol = 3, nrow = 3)
+  
+  if (est_thd){
+    
+    for (p in seq(1,3, by = 1)){
+      for (q in seq(1,3,by=1)){
+        tar = TSA::tar(serie, 
+                   p1 = p,
+                   p2 = q, 
+                   d = d,
+                   a = 0.1,
+                   transform = trans,
+                   b = 0.9)
+        
+        ordens[p,q] = tar$AIC
+      }
+  }
+    
+
+  }else{
+    
+    for (p in seq(1,3, by = 1)){
+      for (q in seq(1,3,by=1)){
+        tar = TSA::tar(serie, 
+                   p1 = p,
+                   p2 = q, 
+                   d = d,
+                   a = 0.1,
+                   b = 0.9,
+                   estimate.thd = F,
+                   transform = trans,
+                   threshold = thd)
+        
+        ordens[p,q] = tar$AIC
+      }
+  }
+    
+  }
+
+  
+  return(ordens)
+}
+
+ordens_0 = tar_aic(3,3,0, thd = thd, serie_petrol, est_thd = F)
+ordens_1 = tar_aic(3,3,1, thd = thd, serie_petrol, est_thd = F)
+ordens_2 = tar_aic(3,3,2, thd = thd, serie_petrol, est_thd = F)
+ordens_3 = tar_aic(3,3,3, thd = thd, serie_petrol, est_thd = F)
+
+```
+
+
+Verificando ordens:
+
+```{r}
+ordens_0
+```
+
+
+```{r}
+ordens_1
+```
+
+
+```{r}
+ordens_2
+```
+
+
+```{r}
+ordens_3
+```
+
+O melhor modelo é o SETAR(3,2,2), vejamos o modelo:
+
+```{r}
+#SETAR
+modelo_final = TSA::tar(serie_petrol, 
+                 p1 = 3,
+                 p2 = 2, 
+                 d = 2,
+                 a = 0.1,
+                 b = 0.9,
+                 estimate.thd = F,
+                 threshold = thd,
+                 print = T)
+
+```
+
+Predições graficamente:
+
+```{r}
+#Predict SETAR
+set.seed(1)
+pred = predict(modelo_final, n.ahead = 60, n.sim = 1000)
+yy=ts(c(serie_petrol,pred$fit),frequency=1,start=1)
+plot(yy,type='n',ylim=range(c(yy,pred$pred.interval)),
+     ylab='U$', 
+     xlab=expression(t),
+     main = 'Previsão preço do Barril do Petróleo Brent Europa - 1987 a 2022')
+lines(yy[1:419])
+lines(window(yy, start=419+1),lty=1, col = 'blue')
+lines(ts(pred$pred.interval[2,],start=419+1),lty=2, col = 'red')
+lines(ts(pred$pred.interval[1,],start=419+1),lty=2, col = 'red')
+op = par(cex = 0.8) # Tamanho do texto da legenda
+legend(x = 'topleft',
+       lty = c(1,4,4),
+       text.font = 10,
+       box.lwd = 1,
+       legend = c("Values","Prediction", "Conf. Int."), 
+       col = c('black','blue','red'))
+```
+
+Numéricamente, temos as seguintes predições:
+
+```{r}
+pred$fit
+```
+
+Com intervalos:
+
+```{r}
+pred$pred.interval
+```
+
+## Setar com 2 quebras
+
+
+```{r}
+setarA = setar(log(serie_petrol),m=2,d=2,model = "TAR",
+               thDelay = 1, 
+               nthresh = 2,
+               trim = 0.1)
+
+summary(setarA)
+
+```
+
+```{r}
+par(mar=c(2,3,3,0))
+plot(setarA) 
+```
+
+
+```{r}
+#Predict TAR
+set.seed(1)
+pred = predict(setarA, n.ahead = 60, n.sim = 1000)
+pred
+```
+
+```{r}
+set.seed(1)
+yy=ts(c(log(serie_petrol), pred),frequency=1,start=1)
+plot(yy,type='n',
+     ylab='U$', 
+     xlab=expression(t),
+     main = 'Predição preço do Barril do Petróleo Brent Europa - 1987 a 2022')
+lines(yy[1:419])
+lines(setarA$fitted.values, col = 'red', lty=4)
+lines(window(yy, start=419+1),lty=1, col = 'blue')
+op = par(cex = 0.8) # Tamanho do texto da legenda
+legend(x = 'bottomright',
+       lty = c(1,4,4),
+       text.font = 10,
+       box.lwd = 1,
+       legend = c("Values","Fitted values","Prediction"), 
+       col = c('black','red','blue'))
+```
+
+# MTAR
+
+```{r}
+# MTAR
+setarB = setar(log(serie_petrol),m=2,mH=2, mM = 2, mL=2,d=2,
+                model = "MTAR",
+                nthresh = 2,
+                thDelay = 1)
+summary(setarB)
+```
+
+
+```{r}
+#Predict MTAR
+set.seed(1)
+pred = predict(setarB, n.ahead = 60, n.sim = 1000)
+pred
+```
+
+
+
+```{r}
+set.seed(1)
+yy=ts(c(log(serie_petrol),pred),frequency=1,start=1)
+plot(yy,type='n',
+     ylab='U$', 
+     xlab=expression(t),
+     main = 'Predição preço do Barril do Petróleo Brent Europa - 1987 a 2022')
+lines(yy[1:419])
+lines(setarB$fitted.values, col = 'red', lty=4)
+lines(window(yy, start=419+1),lty=1, col = 'blue')
+op = par(cex = 0.8) # Tamanho do texto da legenda
+legend(x = 'topleft',
+       lty = c(1,4,4),
+       text.font = 10,
+       box.lwd = 1,
+       legend = c("Values","Fitted values","Prediction"), 
+       col = c('black','red','blue'))
+```
+
+### ESTAR
+
+```{r}
+#ESTAR
+modelo_star = star(log(serie_petrol), m = 2, noRegimes = 3, d=1,thDelay = 1)
+summary(modelo_star)
+```
+
+
+
+```{r}
+#Predict ESTAR
+set.seed(1)
+pred = predict(modelo_star, n.ahead = 60, n.sim = 1000)
+pred
+```
+
+```{r}
+set.seed(1)
+yy=ts(c(log(serie_petrol),pred),frequency=1,start=1)
+plot(yy,type='n',
+     ylab='U$', 
+     xlab=expression(t),
+     main = 'Predição preço do Barril do Petróleo Brent Europa - 1987 a 2022')
+lines(yy[1:419])
+lines(modelo_star$fitted.values, col = 'red', lty=4)
+lines(window(yy, start=419+1),lty=1, col = 'blue')
+op = par(cex = 0.8) # Tamanho do texto da legenda
+legend(x = 'bottomright',
+       lty = c(1,4,4),
+       text.font = 10,
+       box.lwd = 1,
+       legend = c("Values","Fitted values","Prediction"), 
+       col = c('black','red','blue'))
+
+```
+
+## LSTAR
+
+```{r}
+# LSTAR
+modelo_lstar <- lstar(log(serie_petrol), m = 2, d = 1, 
+                      starting.control=list(gammaInt=c(1,200)),
+                      thDelay = 1)
+summary(modelo_lstar)
+```
+
+```{r}
+#Predict LSTAR
+set.seed(1)
+pred = predict(modelo_lstar, n.ahead = 60, n.sim = 1000)
+pred
+```
+
+```{r}
+set.seed(1)
+yy=ts(c(log(serie_petrol),pred),frequency=1,start=1)
+plot(yy,type='n',
+     ylab='U$', 
+     xlab=expression(t),
+     main = 'Predição preço do Barril do Petróleo Brent Europa - 1987 a 2022')
+lines(yy[1:419])
+lines(modelo_star$fitted.values, col = 'red', lty=4)
+lines(window(yy, start=419+1),lty=1, col = 'blue')
+op = par(cex = 0.8) # Tamanho do texto da legenda
+legend(x = 'bottomright',
+       lty = c(1,4,4),
+       text.font = 10,
+       box.lwd = 1,
+       legend = c("Values","Fitted values","Prediction"), 
+       col = c('black','red','blue'))
+
+```
+
+## Considerações finais
+
+Na presença de não linearidade da série, a abordagem clássica via metodologia Box-Jenkins não é mais útil, dado que suas hipóteses são violadas. Existem duas famílias de modelos que são capazes de lidar com este problema: ARCH e TAR.
+
+Neste ensaio apresentamos uma abordagem via diferenças na média - família TAR - onde 5 modelos foram estimados: ESTAR 2 regimes, ESTAR 3 regimes, MTAR, ESTAR e LSTAR. 
+
+A previsão mais próxima do valor consolidado do preço do barril de petróleo Brent - EU é do modelo MTAR com U$ 101,33. Esta abordagem de switching de regimes pode ser revisitada utilizando Markov-Switching.
+## Referências
+
+Enders, W. (2008). Applied econometric time series.
+John Wiley & Sons.
+
+J.B. Ramsey (1969), Tests for Specification Errors in Classical Linear Least-Squares Regression Analysis. Journal of the Royal Statistical Society, Series B 31, 350–371
+
+W. Krämer & H. Sonnberger (1986), The Linear Regression Model under Test. Heidelberg: Physica
