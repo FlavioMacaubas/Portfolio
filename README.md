@@ -27,7 +27,7 @@ Este repositório faz parte do meu portfólio em **Data Engineering + IA aplicad
 
 - Fortalecer reprodutibilidade (scripts e instruções de execução)
 - Melhorar cobertura de documentação por módulo
-- Adicionar métricas/resultados quando aplicável
+- Adicionar métricas e resultados quando aplicável
 
 ---
 
@@ -47,26 +47,24 @@ Este repositório faz parte do meu portfólio em **Data Engineering + IA aplicad
 
 ### Passos
 
-`ash
+~~~bash
 git clone https://github.com/FlavioMacaubas/Portfolio.git
 cd Portfolio
 
 # Crie e ative seu ambiente (se aplicável)
 # Instale dependências (se houver)
-# Execute notebooks/scripts conforme estrutura do projeto
-`
+# Execute notebooks/scripts conforme a estrutura do projeto
+~~~
 
 ---
 
 ## Estrutura do repositório
 
-`	ext
+~~~text
 Portfolio/
-├── notebooks/   # quando aplicável
-├── src/         # quando aplicável
-├── data/        # quando aplicável
-└── README.md
-`
+├── README.md
+└── (hub com links para os projetos)
+~~~
 
 ---
 
